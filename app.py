@@ -1,6 +1,7 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request, redirect, url_for
 import random
 import os
+import json
 
 app = Flask(__name__)
 
@@ -82,6 +83,9 @@ def generate_review():
     used_reviews.append(review)
     return review
 
+
+# config persistence removed; admin UI not included in this revert
+
 @app.route("/")
 def home():
     return render_template("index.html", google_url=GOOGLE_REVIEW_URL)
@@ -98,6 +102,9 @@ def generate():
         "reviews": reviews,
         "google_url": GOOGLE_REVIEW_URL
     })
+
+
+# Admin route removed in this revert
 
 
 if __name__ == "__main__":

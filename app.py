@@ -84,11 +84,30 @@ def generate_review():
     return review
 
 
-# config persistence removed; admin UI not included in this revert
+# config persistence and admin UI helper
+def load_config():
+    cfg_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_config(cfg):
+    cfg_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    with open(cfg_path, 'w', encoding='utf-8') as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+
 
 @app.route("/")
 def home():
-    return render_template("index.html", google_url=GOOGLE_REVIEW_URL)
+    cfg = load_config()
+    shop_name = cfg.get('shop_name', '')
+    shop_url = cfg.get('shop_url', '')
+    return render_template("index.html", google_url=GOOGLE_REVIEW_URL, shop_name=shop_name, shop_url=shop_url)
 
 @app.route("/generate")
 def generate():
@@ -104,7 +123,23 @@ def generate():
     })
 
 
-# Admin route removed in this revert
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    available_types = ["Fast Food", "Sea Food", "Desserts", "Vegetarian", "Asian", "Other"]
+    if request.method == 'POST':
+        shop_name = request.form.get('shop_name', '').strip()
+        shop_url = request.form.get('shop_url', '').strip()
+        quiz_types = request.form.getlist('quiz_types')
+        cfg = {
+            'shop_name': shop_name,
+            'shop_url': shop_url,
+            'quiz_types': quiz_types
+        }
+        save_config(cfg)
+        return redirect(url_for('home'))
+
+    cfg = load_config()
+    return render_template('admin.html', cfg=cfg, available_types=available_types)
 
 
 if __name__ == "__main__":

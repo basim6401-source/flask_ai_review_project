@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin - AI Review Generator</title>
+  <style>
+    body{font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif;background:#0f172a;color:#fff;padding:28px}
+    .box{max-width:720px;margin:28px auto;background:rgba(255,255,255,0.04);padding:22px;border-radius:12px}
+    label{display:block;margin-top:14px;font-weight:600}
+    input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);color:#fff}
+    .types{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .type{background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px}
+    .submit{margin-top:18px;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#7F5AF0,#6246EA);border:none;color:#fff;font-weight:700}
+    a.back{color:#c7d2fe;text-decoration:none;display:inline-block;margin-bottom:12px}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <a class="back" href="/">← Back</a>
+    <h2>Admin Settings</h2>
+    <form method="post" action="/admin">
+      <label>Restaurants</label>
+      <div id="shops">
+        {% set shops = cfg.get('shops', []) %}
+        {% if shops | length == 0 %}
+          {% set shops = [{'name':'','url':''}] %}
+        {% endif %}
+        {% for s in shops %}
+          <div class="shop-row">
+            <input type="text" name="shop_name" placeholder="Shop name" value="{{ s.name }}" />
+            <input type="text" name="shop_url" placeholder="Shop URL" value="{{ s.url }}" />
+            <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
+          </div>
+        {% endfor %}
+      </div>
+      <div style="margin-top:8px"><button type="button" onclick="addRow()" class="submit">+ Add Restaurant</button></div>
+
+      <label style="margin-top:12px">Quiz Types (select one or more)</label>
+      <div class="types">
+        {% set selected = cfg.get('quiz_types', []) %}
+        {% for t in available_types %}
+          <label class="type"><input type="checkbox" name="quiz_types" value="{{ t }}" {% if t in selected %}checked{% endif %}/> {{ t }}</label>
+        {% endfor %}
+      </div>
+
+      <button class="submit" type="submit">Save</button>
+    </form>
+
+  <script>
+    function addRow(){
+      const wrap = document.getElementById('shops');
+      const div = document.createElement('div');
+      div.className='shop-row';
+      div.innerHTML = `<input type="text" name="shop_name" placeholder="Shop name" value="" />
+                       <input type="text" name="shop_url" placeholder="Shop URL" value="" />
+                       <button type="button" class="remove" onclick="removeRow(this)">Remove</button>`;
+      wrap.appendChild(div);
+    }
+    function removeRow(btn){
+      const row = btn.closest('.shop-row');
+      if(row) row.remove();
+    }
+  </script>
+  </div>
+</body>
+</html>

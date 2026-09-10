@@ -127,18 +127,30 @@ def generate():
 def admin():
     available_types = ["Fast Food", "Sea Food", "Desserts", "Vegetarian", "Asian", "Other"]
     if request.method == 'POST':
-        shop_name = request.form.get('shop_name', '').strip()
-        shop_url = request.form.get('shop_url', '').strip()
+        names = request.form.getlist('shop_name')
+        urls = request.form.getlist('shop_url')
+        shops = []
+        for n, u in zip(names, urls):
+            n = n.strip()
+            u = u.strip()
+            if n or u:
+                shops.append({'name': n, 'url': u})
         quiz_types = request.form.getlist('quiz_types')
         cfg = {
-            'shop_name': shop_name,
-            'shop_url': shop_url,
+            'shops': shops,
             'quiz_types': quiz_types
         }
         save_config(cfg)
         return redirect(url_for('home'))
 
     cfg = load_config()
+    # ensure legacy keys are handled
+    if 'shops' not in cfg:
+        shop_name = cfg.get('shop_name', '')
+        shop_url = cfg.get('shop_url', '')
+        cfg['shops'] = []
+        if shop_name or shop_url:
+            cfg['shops'].append({'name': shop_name, 'url': shop_url})
     return render_template('admin.html', cfg=cfg, available_types=available_types)
 
 

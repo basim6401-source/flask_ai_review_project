@@ -179,7 +179,31 @@ textarea{
         powered by Huzeetap
     </p>
 
-    <!-- admin UI removed in revert -->
+        {% if shops %}
+        <div style="text-align:center;margin-bottom:18px">
+            <label style="color:rgba(255,255,255,0.8);margin-right:8px">Select Shop:</label>
+            <select id="shopSelect" onchange="onShopChange()">
+                {% for s in shops %}
+                    <option value="{{ loop.index0 }}">{{ s.name or 'Unnamed' }}</option>
+                {% endfor %}
+            </select>
+            <div id="shopInfo" style="margin-top:8px;color:rgba(255,255,255,0.85)"></div>
+        </div>
+
+        <div style="position:absolute;right:28px;top:22px"><a href="/admin" style="color:#ddd;text-decoration:none;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:8px">Admin</a></div>
+        <script>
+            const SHOPS = {{ shops|tojson }};
+            function onShopChange(){
+                const sel = document.getElementById('shopSelect');
+                const idx = parseInt(sel.value || '0');
+                const s = SHOPS[idx] || {};
+                const info = document.getElementById('shopInfo');
+                if(s.name) info.innerHTML = `Shop: <strong style="color:#fff">${s.name}</strong> ${s.url?'- <a href="'+s.url+'" target="_blank" style="color:#a5b4fc">Visit</a>':''}`;
+                else info.innerHTML = '';
+            }
+            document.addEventListener('DOMContentLoaded', onShopChange);
+        </script>
+        {% endif %}
 
     <button class="btn" onclick="generateReview()">
         Generate Reviews

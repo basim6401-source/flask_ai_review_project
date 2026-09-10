@@ -193,6 +193,30 @@ textarea{
         <div style="position:absolute;right:28px;top:22px"><a href="/admin" style="color:#ddd;text-decoration:none;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:8px">Admin</a></div>
         <script>
             const SHOPS = {{ shops|tojson }};
+            const AVAILABLE_TYPES = {{ available_types|tojson }};
+
+            function buildTypeSelector(){
+                const container = document.createElement('div');
+                container.style.marginTop = '8px';
+                container.style.textAlign = 'center';
+                const label = document.createElement('label');
+                label.style.color = 'rgba(255,255,255,0.8)';
+                label.style.marginRight = '8px';
+                label.textContent = 'Select Type:';
+                const sel = document.createElement('select');
+                sel.id = 'typeSelect';
+                AVAILABLE_TYPES.forEach(t => {
+                    const o = document.createElement('option');
+                    o.value = t;
+                    o.textContent = t;
+                    sel.appendChild(o);
+                });
+                container.appendChild(label);
+                container.appendChild(sel);
+                const parent = document.querySelector('.container');
+                parent.insertBefore(container, parent.querySelector('.btn'));
+            }
+
             function onShopChange(){
                 const sel = document.getElementById('shopSelect');
                 const idx = parseInt(sel.value || '0');
@@ -201,7 +225,8 @@ textarea{
                 if(s.name) info.innerHTML = `Shop: <strong style="color:#fff">${s.name}</strong> ${s.url?'- <a href="'+s.url+'" target="_blank" style="color:#a5b4fc">Visit</a>':''}`;
                 else info.innerHTML = '';
             }
-            document.addEventListener('DOMContentLoaded', onShopChange);
+
+            document.addEventListener('DOMContentLoaded', () => { buildTypeSelector(); onShopChange(); });
         </script>
         {% endif %}
 
@@ -223,12 +248,16 @@ async function generateReview() {
 
     try {
 
-        const response = await fetch("/generate");
+        const sel = document.getElementById('typeSelect');
+        const q = sel ? `?type=${encodeURIComponent(sel.value)}` : '';
+        const response = await fetch(`/generate${q}`);
         const data = await response.json();
 
         let html = "";
 
         data.reviews.forEach((review, index) => {
+
+            const selectedType = document.getElementById('typeSelect') ? document.getElementById('typeSelect').value : '';
 
             html += `
                 <div class="review-card">
@@ -249,7 +278,8 @@ async function generateReview() {
                         <a
                             class="google-btn"
                             href="${data.google_url}"
-                            target="_blank">
+                            target="_blank"
+                            onclick="copyAndOpenGoogle('review${index}', '${data.google_url}')">
                             Write on Google
                         </a>
 

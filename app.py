@@ -7,6 +7,18 @@ app = Flask(__name__)
 
 GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJEb5DJgBDvDsRixDy-RGkGCw"
 
+# Default available quiz types and mapping to food pools
+AVAILABLE_TYPES = ["Fast Food", "Sea Food", "Desserts", "Vegetarian", "Asian", "Other"]
+
+# Category-specific food items to better tailor reviews per quiz type
+CATEGORY_FOODS = {
+    "Fast Food": ["burger", "fries", "chicken sandwich", "milkshake", "loaded fries", "wrap"],
+    "Sea Food": ["grilled fish", "prawn curry", "fried shrimp", "calamari", "fish and chips"],
+    "Desserts": ["cheesecake", "ice cream", "chocolate lava cake", "brownie", "fruit tart"],
+    "Vegetarian": ["veg burger", "salad", "paneer wrap", "veggie taco", "grilled vegetables"],
+    "Asian": ["sushi", "ramen", "pad thai", "dumplings", "fried rice"],
+}
+
 food_items = [
     "burger",
     "fries",
@@ -113,19 +125,46 @@ def home():
         if shop_name or shop_url:
             shops = [{'name': shop_name, 'url': shop_url}]
 
-    return render_template("index.html", google_url=GOOGLE_REVIEW_URL, shops=shops)
+    # provide available quiz types to the frontend
+    quiz_types = cfg.get('quiz_types', AVAILABLE_TYPES)
+
+    return render_template("index.html", google_url=GOOGLE_REVIEW_URL, shops=shops, available_types=quiz_types)
 
 @app.route("/generate")
 def generate():
+    # Optional quiz type filter via query param
+    qtype = request.args.get('type')
+
+    # select food pool based on quiz type
+    if qtype and qtype in CATEGORY_FOODS:
+        pool = CATEGORY_FOODS[qtype]
+    else:
+        pool = food_items
+
     reviews = []
     while len(reviews) < 2:
-        review = generate_review()
+        # generate a review using the selected pool
+        food = random.choice(pool)
+        quality = random.choice(qualities)
+        starter = random.choice(review_starters)
+        service = random.choice(service_phrases)
+
+        patterns = [
+            f"{starter} {food}. It was {quality} and absolutely hit the spot. {service}",
+            f"{starter} {food} and it was {quality}. {service}",
+            f"{starter} {food}—{quality}, fresh, and really satisfying. {service}",
+            f"{starter} {food} and I couldn't fault it. It was {quality}. {service}",
+            f"{starter} {food}, and the taste was {quality}. {service}"
+        ]
+
+        review = random.choice(patterns)
         if review not in reviews:
             reviews.append(review)
 
     return jsonify({
         "reviews": reviews,
-        "google_url": GOOGLE_REVIEW_URL
+        "google_url": GOOGLE_REVIEW_URL,
+        "type": qtype or ""
     })
 
 

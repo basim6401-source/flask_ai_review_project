@@ -105,9 +105,15 @@ def save_config(cfg):
 @app.route("/")
 def home():
     cfg = load_config()
-    shop_name = cfg.get('shop_name', '')
-    shop_url = cfg.get('shop_url', '')
-    return render_template("index.html", google_url=GOOGLE_REVIEW_URL, shop_name=shop_name, shop_url=shop_url)
+    shops = cfg.get('shops', [])
+    # legacy support: if single shop keys exist, include them
+    if not shops:
+        shop_name = cfg.get('shop_name', '')
+        shop_url = cfg.get('shop_url', '')
+        if shop_name or shop_url:
+            shops = [{'name': shop_name, 'url': shop_url}]
+
+    return render_template("index.html", google_url=GOOGLE_REVIEW_URL, shops=shops)
 
 @app.route("/generate")
 def generate():

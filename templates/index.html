@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Google Review Generator</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:30px;
+    background:
+    radial-gradient(circle at top left,#7F5AF0 0%,transparent 30%),
+    radial-gradient(circle at bottom right,#2CB67D 0%,transparent 30%),
+    linear-gradient(135deg,#0F172A,#1E293B);
+}
+
+.container{
+    width:100%;
+    max-width:950px;
+    padding:35px;
+    border-radius:24px;
+    background:rgba(255,255,255,0.08);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,0.15);
+    box-shadow:
+    0 8px 32px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+h1{
+    text-align:center;
+    color:white;
+    font-size:2.4rem;
+    margin-bottom:10px;
+    font-weight:700;
+}
+
+.subtitle{
+    text-align:center;
+    color:rgba(255,255,255,0.75);
+    margin-bottom:30px;
+    font-size:16px;
+}
+
+.btn{
+    display:block;
+    margin:auto;
+    border:none;
+    color:white;
+    font-size:16px;
+    font-weight:600;
+    padding:14px 30px;
+    border-radius:14px;
+    cursor:pointer;
+    background:linear-gradient(135deg,#7F5AF0,#6246EA);
+    box-shadow:0 8px 20px rgba(127,90,240,.4);
+    transition:.3s;
+}
+
+.btn:hover{
+    transform:translateY(-3px);
+    box-shadow:0 12px 25px rgba(127,90,240,.55);
+}
+
+#reviews{
+    margin-top:25px;
+}
+
+.review-card{
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.95));
+    border:1px solid rgba(15,23,42,0.06);
+    border-radius:18px;
+    padding:14px 16px;
+    margin-bottom:18px;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.35), inset 0 1px 0 rgba(255,255,255,0.6);
+    animation:fadeIn .4s ease;
+    backdrop-filter: blur(8px);
+}
+
+textarea{
+    width:100%;
+    background:rgba(255,255,255,0.98);
+    color:#0b1720;
+    box-shadow: none;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    resize:none;
+    height:auto;
+    min-height:60px;
+    max-height:140px;
+    overflow:auto;
+    font-size:15px;
+    line-height:1.55;
+    outline:none;
+    box-sizing: border-box;
+}
+
+.actions{
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.copy-btn{
+    background:linear-gradient(135deg,#14B8A6,#06B6D4);
+    color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:700;
+    transition:.22s;
+    box-shadow: 0 8px 18px rgba(6,95,70,0.18);
+}
+
+.copy-btn:hover{
+    transform:translateY(-2px) scale(1.02);
+}
+
+.google-btn{
+    background:linear-gradient(135deg,#6366F1,#7C3AED);
+    color:white;
+    text-decoration:none;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:700;
+    transition:.22s;
+    box-shadow: 0 8px 20px rgba(99,102,241,0.14);
+}
+
+.google-btn:hover{
+    transform:translateY(-2px) scale(1.02);
+}
+
+.success{
+    position:fixed;
+    top:20px;
+    right:20px;
+    background:#10B981;
+    color:white;
+    padding:12px 20px;
+    border-radius:10px;
+    display:none;
+}
+
+@keyframes fadeIn{
+    from{
+        opacity:0;
+        transform:translateY(15px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>⭐ AI Google Review Generator</h1>
+
+    <p class="subtitle">
+        powered by Huzeetap
+    </p>
+
+    <button class="btn" onclick="generateReview()">
+        Generate Reviews
+    </button>
+
+    <div id="reviews"></div>
+
+</div>
+
+<div id="success" class="success">
+    Review copied successfully!
+</div>
+
+<script>
+
+async function generateReview() {
+
+    try {
+
+        const response = await fetch("/generate");
+        const data = await response.json();
+
+        let html = "";
+
+        data.reviews.forEach((review, index) => {
+
+            html += `
+                <div class="review-card">
+
+                    <textarea
+                        id="review${index}"
+                        rows="4"
+                        readonly>${review}</textarea>
+
+                    <div class="actions">
+
+                        <button
+                            class="copy-btn"
+                            onclick="copyReview('review${index}')">
+                            Copy Review
+                        </button>
+
+                        <a
+                            class="google-btn"
+                            href="${data.google_url}"
+                            target="_blank">
+                            Write on Google
+                        </a>
+
+                    </div>
+
+                </div>
+            `;
+        });
+
+        document.getElementById("reviews").innerHTML = html;
+
+            // Auto-resize textareas to fit their content (remove extra empty space)
+            document.querySelectorAll('#reviews textarea').forEach(t => {
+                t.style.height = 'auto';
+                const target = Math.min(t.scrollHeight, 140);
+                t.style.height = target + 'px';
+            });
+
+    }
+    catch(error){
+
+        document.getElementById("reviews").innerHTML =
+        "<p style='color:white;'>Unable to load reviews.</p>";
+
+        console.error(error);
+    }
+}
+
+function copyReview(id){
+
+    const text =
+        document.getElementById(id).value;
+
+    navigator.clipboard.writeText(text);
+
+    const msg =
+        document.getElementById("success");
+
+    msg.style.display = "block";
+
+    setTimeout(() => {
+        msg.style.display = "none";
+    }, 2000);
+}
+
+function copyAndOpenGoogle(id, url){
+    const text = document.getElementById(id).value;
+
+    window.open(url, '_blank');
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).catch(() => {
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            temp.setAttribute('readonly', '');
+            temp.style.position = 'fixed';
+            temp.style.left = '-9999px';
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+        });
+    } else {
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.setAttribute('readonly', '');
+        temp.style.position = 'fixed';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+    }
+
+    return false;
+}
+
+</script>
+
+</body>
+</html>

@@ -135,7 +135,15 @@ def generate():
     # Optional quiz type filter via query param
     qtype = request.args.get('type')
 
-    # select food pool based on quiz type
+    # load config to read available quiz types
+    cfg = load_config()
+    available = cfg.get('quiz_types', AVAILABLE_TYPES)
+
+    # if no type provided, default to first admin-selected type (if any)
+    if not qtype and available:
+        qtype = available[0]
+
+    # select food pool based on quiz type; fall back to default pool
     if qtype and qtype in CATEGORY_FOODS:
         pool = CATEGORY_FOODS[qtype]
     else:

@@ -23,6 +23,15 @@ class AdminAuthTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/admin', response.headers.get('Location', ''))
 
+    def test_generate_review_matches_business_type(self):
+        response = self.client.get('/generate?type=Dental%20Clinic')
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data.get('reviews'))
+        review_text = ' '.join(data['reviews']).lower()
+        self.assertTrue(any(keyword in review_text for keyword in ['clinic', 'dental', 'teeth', 'treatment', 'check-up', 'cleaning']))
+        self.assertNotIn('food', review_text)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -99,11 +99,56 @@ qualities = [
 
 service_phrases = [
     "The staff were friendly and efficient, and the whole experience felt smooth.",
-    "Service was quick, the team was welcoming, and the food arrived exactly as expected.",
-    "Everything came out fast and the customer service was genuinely great.",
-    "The place was clean, the staff were polite, and the order was handled perfectly.",
+    "Service was quick, the team was welcoming, and everything was handled professionally.",
+    "Everything was efficient, organised, and the customer service was genuinely great.",
+    "The place was clean, the staff were polite, and the process was handled perfectly.",
     "The service was outstanding and made the visit even more enjoyable."
 ]
+
+service_type_phrases = {
+    "Dental Clinic": [
+        "The clinic was clean, the staff were professional, and the treatment was handled carefully.",
+        "The visit felt smooth and reassuring from start to finish.",
+        "The care provided was thoughtful, precise, and genuinely reassuring.",
+        "Everything felt organised and comfortable, and the team made the process easy."
+    ],
+    "Salon": [
+        "The salon was tidy, the team was friendly, and the styling was done with care.",
+        "The service was smooth, professional, and the result looked exactly as expected.",
+        "Everything felt polished and comfortable, and the attention to detail was excellent.",
+        "The staff were welcoming and the treatment was delivered with real care."
+    ],
+    "Spa": [
+        "The spa environment felt calming and the treatment was relaxing from start to finish.",
+        "The service was gentle, professional, and the whole experience felt premium.",
+        "Everything was clean, peaceful, and the care was truly personal.",
+        "The team made the treatment feel comfortable, thoughtful, and restorative."
+    ],
+    "Gym": [
+        "The trainers were supportive, knowledgeable, and made the session motivating.",
+        "The atmosphere felt energetic and professional, and the guidance was helpful.",
+        "The gym was well maintained, and the coaching made the workout feel effective.",
+        "Everything felt organised and encouraging, and the support was excellent."
+    ],
+    "Auto Garage": [
+        "The garage team was honest, efficient, and very professional with the service.",
+        "The process was smooth, transparent, and the work was done with care.",
+        "The staff explained everything clearly, and the service felt dependable.",
+        "The repair and maintenance work was handled neatly and professionally."
+    ],
+    "Hospital": [
+        "The staff were compassionate, efficient, and the care felt reassuring.",
+        "The visit was organised, the team was helpful, and the support felt professional.",
+        "The treatment and guidance were clear, calm, and genuinely supportive.",
+        "Everything felt carefully managed and the medical attention was trustworthy."
+    ],
+    "Real Estate": [
+        "The team was knowledgeable, respectful, and very helpful throughout the process.",
+        "The property visit was smooth, informative, and the guidance felt transparent.",
+        "Everything was explained clearly and the service felt reliable and professional.",
+        "The experience was well organised and made the decision-making process easy."
+    ]
+}
 
 review_starters = [
     "I really loved the",
@@ -122,30 +167,58 @@ review_starters = [
 used_reviews = []
 
 
-def generate_review():
-    food = random.choice(food_items)
-    quality = random.choice(qualities)
+def get_quality_words_for_type(qtype):
+    if qtype in {"Dental Clinic", "Salon", "Spa", "Gym", "Auto Garage", "Hospital", "Real Estate"}:
+        return [
+            "professional",
+            "smooth",
+            "reliable",
+            "excellent",
+            "careful",
+            "well-managed",
+            "friendly",
+            "high quality",
+            "very reassuring",
+            "genuinely impressive"
+        ]
+    return qualities
+
+
+def generate_review_for_type(qtype=None):
+    qtype = qtype or "Fast Food"
+    pool = CATEGORY_FOODS.get(qtype, food_items)
+    item = random.choice(pool)
+    quality = random.choice(get_quality_words_for_type(qtype))
+    service = random.choice(service_type_phrases.get(qtype, service_phrases))
+
+    if qtype in {"Dental Clinic", "Salon", "Spa", "Gym", "Auto Garage", "Hospital", "Real Estate"}:
+        starters = [
+            f"The {qtype} experience was",
+            f"I was impressed with the {qtype} service and the",
+            f"The team at the {qtype} made the",
+            f"The {qtype} here was"
+        ]
+        patterns = [
+            f"{random.choice(starters)} {item}. It was {quality} and the attention to detail was excellent. {service}",
+            f"{random.choice(starters)} {item}, and the service was {quality}. {service}",
+            f"{random.choice(starters)} {item}. The process was smooth, professional, and genuinely reassuring. {service}",
+            f"{random.choice(starters)} {item}, and I could tell the team cared about quality and comfort. {service}"
+        ]
+        return random.choice(patterns)
+
     starter = random.choice(review_starters)
-    service = random.choice(service_phrases)
-
     patterns = [
-        f"{starter} {food}. It was {quality} and absolutely hit the spot. {service}",
-        f"{starter} {food} and it was {quality}. {service}",
-        f"{starter} {food}. It was {quality}, fresh, and really satisfying. {service}",
-        f"{starter} {food} and I couldn't fault it. It was {quality}. {service}",
-        f"{starter} {food}, and the taste was {quality}. {service}"
+        f"{starter} {item}. It was {quality} and absolutely hit the spot. {service}",
+        f"{starter} {item} and it was {quality}. {service}",
+        f"{starter} {item}. It was {quality}, fresh, and really satisfying. {service}",
+        f"{starter} {item} and I couldn't fault it. It was {quality}. {service}",
+        f"{starter} {item}, and the taste was {quality}. {service}"
     ]
+    return random.choice(patterns)
 
-    review = random.choice(patterns)
 
-    if len(used_reviews) >= len(patterns) * len(food_items) * len(qualities):
-        used_reviews.clear()
-
-    while review in used_reviews:
-        review = random.choice(patterns)
-
-    used_reviews.append(review)
-    return review
+def generate_review():
+    return generate_review_for_type()
 
 
 # config persistence and admin UI helper
@@ -235,21 +308,7 @@ def generate():
 
     reviews = []
     while len(reviews) < 2:
-        # generate a review using the selected pool
-        food = random.choice(pool)
-        quality = random.choice(qualities)
-        starter = random.choice(review_starters)
-        service = random.choice(service_phrases)
-
-        patterns = [
-            f"{starter} {food}. It was {quality} and absolutely hit the spot. {service}",
-            f"{starter} {food} and it was {quality}. {service}",
-            f"{starter} {food}. It was {quality}, fresh, and really satisfying. {service}",
-            f"{starter} {food} and I couldn't fault it. It was {quality}. {service}",
-            f"{starter} {food}, and the taste was {quality}. {service}"
-        ]
-
-        review = random.choice(patterns)
+        review = generate_review_for_type(qtype)
         if review not in reviews:
             reviews.append(review)
 

@@ -1,5 +1,4 @@
 from app import app
-print('Registered routes:')
-for rule in app.url_map.iter_rules():
-    methods = ','.join(sorted(rule.methods))
-    print(f"{rule.rule} -> {methods}")
+
+# Route discovery is intentionally silent in production output.
+_ = app.url_map.iter_rules()

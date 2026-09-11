@@ -5,63 +5,200 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin - AI Review Generator</title>
   <style>
-    body{font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif;background:#0f172a;color:#fff;padding:28px}
-    .box{max-width:720px;margin:28px auto;background:rgba(255,255,255,0.04);padding:22px;border-radius:12px}
-    label{display:block;margin-top:14px;font-weight:600}
-    input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);color:#fff}
-    .types{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-    .type{background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px}
-    .submit{margin-top:18px;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#7F5AF0,#6246EA);border:none;color:#fff;font-weight:700}
-    a.back{color:#c7d2fe;text-decoration:none;display:inline-block;margin-bottom:12px}
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 30px 18px 50px;
+      font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(127,90,240,0.38), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(45,212,191,0.2), transparent 25%),
+        linear-gradient(135deg, #0f172a, #111827 42%, #1f2937);
+      color: #fff;
+    }
+    .box {
+      max-width: 980px;
+      margin: 0 auto;
+      background: rgba(15, 23, 42, 0.76);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.38);
+      backdrop-filter: blur(18px);
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    a.back, a.logout {
+      text-decoration: none;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    a.back {
+      color: #c7d2fe;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(129, 140, 248, 0.2);
+    }
+    a.logout {
+      color: #fecaca;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+    h2 {
+      margin: 10px 0 20px;
+      font-size: clamp(1.8rem, 2.5vw, 2.4rem);
+    }
+    .panel {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(148,163,184,0.13);
+      border-radius: 18px;
+      padding: 18px;
+      margin-top: 18px;
+    }
+    label {
+      display: block;
+      margin-top: 14px;
+      margin-bottom: 10px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    input[type=text] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(148,163,184,0.18);
+      background: rgba(15, 23, 42, 0.5);
+      color: #fff;
+      margin-bottom: 10px;
+      outline: none;
+    }
+    input[type=text]:focus {
+      border-color: rgba(167, 139, 250, 0.8);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
+    }
+    .shop-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .remove, .submit, .add-btn {
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease;
+    }
+    .remove {
+      background: rgba(239,68,68,0.14);
+      color: #fecaca;
+      border: 1px solid rgba(239,68,68,0.2);
+      min-width: 110px;
+    }
+    .add-btn, .submit {
+      background: linear-gradient(135deg, #7F5AF0, #6246EA);
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(99,102,241,0.28);
+    }
+    .add-btn {
+      padding: 11px 16px;
+      margin-top: 10px;
+    }
+    .submit {
+      margin-top: 20px;
+      padding: 12px 18px;
+      width: 100%;
+    }
+    .types {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .type {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(148,163,184,0.18);
+      padding: 9px 12px;
+      border-radius: 10px;
+      color: #e2e8f0;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    @media (max-width: 700px) {
+      .shop-row {
+        grid-template-columns: 1fr;
+      }
+      .box { padding: 18px 16px; }
+    }
   </style>
 </head>
 <body>
   <div class="box">
-    <a class="back" href="/">← Back</a>
+    <div class="topbar">
+      <a class="back" href="/">← Back</a>
+      <a class="logout" href="/logout">Logout</a>
+    </div>
+
     <h2>Admin Settings</h2>
+
     <form method="post" action="/admin">
-      <label>Restaurants</label>
-      <div id="shops">
-        {% set shops = cfg.get('shops', []) %}
-        {% if shops | length == 0 %}
-          {% set shops = [{'name':'','url':''}] %}
-        {% endif %}
-        {% for s in shops %}
-          <div class="shop-row">
-            <input type="text" name="shop_name" placeholder="Shop name" value="{{ s.name }}" />
-            <input type="text" name="shop_url" placeholder="Shop URL" value="{{ s.url }}" />
-            <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
-          </div>
-        {% endfor %}
-      </div>
-      <div style="margin-top:8px"><button type="button" onclick="addRow()" class="submit">+ Add Restaurant</button></div>
-
-      <label style="margin-top:12px">Quiz Types (select one or more)</label>
-      <div class="types">
-        {% set selected = cfg.get('quiz_types', []) %}
-        {% for t in available_types %}
-          <label class="type"><input type="checkbox" name="quiz_types" value="{{ t }}" {% if t in selected %}checked{% endif %}/> {{ t }}</label>
-        {% endfor %}
+      <div class="panel">
+        <label>Restaurants</label>
+        <div id="shops">
+          {% set shops = cfg.get('shops', []) %}
+          {% if shops | length == 0 %}
+            {% set shops = [{'name':'','url':''}] %}
+          {% endif %}
+          {% for s in shops %}
+            <div class="shop-row">
+              <input type="text" name="shop_name" placeholder="Shop name" value="{{ s.name }}" />
+              <input type="text" name="shop_url" placeholder="Shop URL" value="{{ s.url }}" />
+              <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
+            </div>
+          {% endfor %}
+        </div>
+        <button type="button" class="add-btn" onclick="addRow()">+ Add Restaurant</button>
       </div>
 
-      <button class="submit" type="submit">Save</button>
+      <div class="panel">
+        <label>Quiz Types (select one or more)</label>
+        <div class="types">
+          {% set selected = cfg.get('quiz_types', []) %}
+          {% for t in available_types %}
+            <label class="type"><input type="checkbox" name="quiz_types" value="{{ t }}" {% if t in selected %}checked{% endif %}/> {{ t }}</label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button class="submit" type="submit">Save Settings</button>
     </form>
 
-  <script>
-    function addRow(){
-      const wrap = document.getElementById('shops');
-      const div = document.createElement('div');
-      div.className='shop-row';
-      div.innerHTML = `<input type="text" name="shop_name" placeholder="Shop name" value="" />
-                       <input type="text" name="shop_url" placeholder="Shop URL" value="" />
-                       <button type="button" class="remove" onclick="removeRow(this)">Remove</button>`;
-      wrap.appendChild(div);
-    }
-    function removeRow(btn){
-      const row = btn.closest('.shop-row');
-      if(row) row.remove();
-    }
-  </script>
+    <script>
+      function addRow(){
+        const wrap = document.getElementById('shops');
+        const div = document.createElement('div');
+        div.className='shop-row';
+        div.innerHTML = `<input type="text" name="shop_name" placeholder="Shop name" value="" />
+                         <input type="text" name="shop_url" placeholder="Shop URL" value="" />
+                         <button type="button" class="remove" onclick="removeRow(this)">Remove</button>`;
+        wrap.appendChild(div);
+      }
+      function removeRow(btn){
+        const row = btn.closest('.shop-row');
+        if(row) row.remove();
+      }
+    </script>
   </div>
 </body>
 </html>

@@ -1,6 +1,6 @@
 from app import app
 
-# Diagnostic helpers intentionally kept silent in production usage.
+# Diagnostic script kept silent to avoid exposing server chatter in the app output.
 app.testing = True
 client = app.test_client()
 

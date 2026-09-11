@@ -17,11 +17,12 @@ python -m flask run
 
 ## Deploy (Render / Heroku)
 
-- This repo includes `requirements.txt` and a `Procfile` for simple deployment.
-- On Render use start command: `gunicorn app:app --bind 0.0.0.0:$PORT`.
-- On Heroku the `Procfile` will be used automatically.
+- This repo includes `requirements.txt`, `Procfile`, and `render.yaml` for deployment.
+- Render uses the included `render.yaml` configuration with the production start command.
+- Heroku uses the `Procfile` automatically.
 
 ## Notes
 - `app.py` respects the `PORT` and `FLASK_DEBUG` environment variables for production.
+- `FLASK_ENV=production` and a generated `SECRET_KEY` are recommended for hosted deployment.
 - For quick sharing you can use `ngrok` to tunnel your local port.
 

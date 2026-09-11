@@ -199,20 +199,62 @@ textarea{
                 const container = document.createElement('div');
                 container.style.marginTop = '8px';
                 container.style.textAlign = 'center';
+
                 const label = document.createElement('label');
                 label.style.color = 'rgba(255,255,255,0.8)';
                 label.style.marginRight = '8px';
                 label.textContent = 'Select Type:';
+
+                const searchWrap = document.createElement('div');
+                searchWrap.style.position = 'relative';
+                searchWrap.style.display = 'inline-block';
+                searchWrap.style.width = '320px';
+                searchWrap.style.maxWidth = '100%';
+
+                const searchInput = document.createElement('input');
+                searchInput.type = 'text';
+                searchInput.placeholder = 'Search business type...';
+                searchInput.style.width = '100%';
+                searchInput.style.padding = '10px 12px';
+                searchInput.style.borderRadius = '10px';
+                searchInput.style.border = '1px solid rgba(255,255,255,0.15)';
+                searchInput.style.background = 'rgba(15,23,42,0.75)';
+                searchInput.style.color = '#fff';
+                searchInput.style.outline = 'none';
+                searchInput.style.marginBottom = '8px';
+
                 const sel = document.createElement('select');
                 sel.id = 'typeSelect';
+                sel.style.width = '100%';
+                sel.style.padding = '10px 12px';
+                sel.style.borderRadius = '10px';
+                sel.style.border = '1px solid rgba(255,255,255,0.15)';
+                sel.style.background = 'rgba(15,23,42,0.75)';
+                sel.style.color = '#fff';
+
                 AVAILABLE_TYPES.forEach(t => {
                     const o = document.createElement('option');
                     o.value = t;
                     o.textContent = t;
                     sel.appendChild(o);
                 });
+
+                searchInput.addEventListener('input', function(){
+                    const query = searchInput.value.toLowerCase();
+                    Array.from(sel.options).forEach(option => {
+                        const text = option.text.toLowerCase();
+                        const shouldShow = !query || text.includes(query);
+                        option.hidden = !shouldShow;
+                    });
+                    if (!query) {
+                        sel.selectedIndex = 0;
+                    }
+                });
+
+                searchWrap.appendChild(searchInput);
+                searchWrap.appendChild(sel);
                 container.appendChild(label);
-                container.appendChild(sel);
+                container.appendChild(searchWrap);
                 const parent = document.querySelector('.container');
                 parent.insertBefore(container, parent.querySelector('.btn'));
             }
@@ -224,6 +266,15 @@ textarea{
                 const info = document.getElementById('shopInfo');
                 if(s.name) info.innerHTML = `Shop: <strong style="color:#fff">${s.name}</strong> ${s.url?'- <a href="'+s.url+'" target="_blank" style="color:#a5b4fc">Visit</a>':''}`;
                 else info.innerHTML = '';
+
+                const typeSelect = document.getElementById('typeSelect');
+                if(typeSelect){
+                    if (s.type && AVAILABLE_TYPES.includes(s.type)) {
+                        typeSelect.value = s.type;
+                    } else if (AVAILABLE_TYPES.length) {
+                        typeSelect.value = AVAILABLE_TYPES[0];
+                    }
+                }
             }
 
             document.addEventListener('DOMContentLoaded', () => { buildTypeSelector(); onShopChange(); });

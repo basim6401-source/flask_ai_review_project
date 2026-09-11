@@ -18,7 +18,7 @@
       color: #fff;
     }
     .box {
-      max-width: 980px;
+      max-width: 1100px;
       margin: 0 auto;
       background: rgba(15, 23, 42, 0.76);
       border: 1px solid rgba(148, 163, 184, 0.18);
@@ -34,6 +34,31 @@
       gap: 12px;
       flex-wrap: wrap;
       margin-bottom: 10px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(148,163,184,0.14);
+    }
+    .stat-card small {
+      display: block;
+      color: rgba(226,232,240,0.7);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+    .stat-card strong {
+      display: block;
+      font-size: 1.4rem;
+      color: white;
     }
     a.back, a.logout {
       text-decoration: none;
@@ -72,6 +97,14 @@
       font-weight: 700;
       color: #e2e8f0;
     }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
     input[type=text] {
       width: 100%;
       padding: 12px 14px;
@@ -88,9 +121,28 @@
     }
     .shop-row {
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: 1.2fr 1.2fr 1fr auto;
       gap: 10px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148,163,184,0.1);
+      align-items: center;
+    }
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(148,163,184,0.18);
+      background: rgba(15, 23, 42, 0.5);
+      color: #fff;
       margin-bottom: 10px;
+      outline: none;
+    }
+    select:focus {
+      border-color: rgba(167, 139, 250, 0.8);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
     }
     .remove, .submit, .add-btn {
       border: none;
@@ -135,8 +187,14 @@
       align-items: center;
       gap: 7px;
     }
+    .type.hidden {
+      display: none;
+    }
     @media (max-width: 700px) {
       .shop-row {
+        grid-template-columns: 1fr;
+      }
+      .stats {
         grid-template-columns: 1fr;
       }
       .box { padding: 18px 16px; }
@@ -152,28 +210,53 @@
 
     <h2>Admin Settings</h2>
 
+    <div class="stats">
+      <div class="stat-card">
+        <small>Businesses</small>
+        <strong id="businessCount">{{ (cfg.get('shops', []) | length) }}</strong>
+      </div>
+      <div class="stat-card">
+        <small>Quiz Types</small>
+        <strong>{{ (cfg.get('quiz_types', []) | length) }}</strong>
+      </div>
+      <div class="stat-card">
+        <small>Status</small>
+        <strong>Live</strong>
+      </div>
+    </div>
+
     <form method="post" action="/admin">
       <div class="panel">
-        <label>Restaurants</label>
+        <div class="panel-header">
+          <label>Business Directory</label>
+          <button type="button" class="add-btn" onclick="addRow()">+ Add Business</button>
+        </div>
+
         <div id="shops">
           {% set shops = cfg.get('shops', []) %}
           {% if shops | length == 0 %}
-            {% set shops = [{'name':'','url':''}] %}
+            {% set shops = [{'name':'','url':'','type':''}] %}
           {% endif %}
           {% for s in shops %}
             <div class="shop-row">
-              <input type="text" name="shop_name" placeholder="Shop name" value="{{ s.name }}" />
-              <input type="text" name="shop_url" placeholder="Shop URL" value="{{ s.url }}" />
+              <input type="text" name="shop_name" placeholder="Business name" value="{{ s.name }}" />
+              <input type="text" name="shop_url" placeholder="Business URL" value="{{ s.url }}" />
+              <select name="shop_type">
+                <option value="">Select business type</option>
+                {% for t in available_types %}
+                  <option value="{{ t }}" {% if s.type == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+              </select>
               <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
             </div>
           {% endfor %}
         </div>
-        <button type="button" class="add-btn" onclick="addRow()">+ Add Restaurant</button>
       </div>
 
       <div class="panel">
         <label>Quiz Types (select one or more)</label>
-        <div class="types">
+        <input id="adminTypeSearch" type="text" placeholder="Search business type..." style="margin-top: 8px;" />
+        <div class="types" id="quizTypeList">
           {% set selected = cfg.get('quiz_types', []) %}
           {% for t in available_types %}
             <label class="type"><input type="checkbox" name="quiz_types" value="{{ t }}" {% if t in selected %}checked{% endif %}/> {{ t }}</label>
@@ -185,19 +268,56 @@
     </form>
 
     <script>
+      const AVAILABLE_TYPES = {{ available_types|tojson }};
+
+      const typeSearch = document.getElementById('adminTypeSearch');
+      if (typeSearch) {
+        typeSearch.addEventListener('input', function () {
+          const query = this.value.trim().toLowerCase();
+          document.querySelectorAll('#quizTypeList .type').forEach((label) => {
+            const text = label.textContent.toLowerCase();
+            const match = !query || text.includes(query);
+            label.classList.toggle('hidden', !match);
+          });
+        });
+      }
+
       function addRow(){
         const wrap = document.getElementById('shops');
         const div = document.createElement('div');
-        div.className='shop-row';
-        div.innerHTML = `<input type="text" name="shop_name" placeholder="Shop name" value="" />
-                         <input type="text" name="shop_url" placeholder="Shop URL" value="" />
-                         <button type="button" class="remove" onclick="removeRow(this)">Remove</button>`;
+        div.className = 'shop-row';
+
+        const options = AVAILABLE_TYPES.map(type => {
+          return `<option value="${type}">${type}</option>`;
+        }).join('');
+
+        div.innerHTML = `
+          <input type="text" name="shop_name" placeholder="Business name" value="" />
+          <input type="text" name="shop_url" placeholder="Business URL" value="" />
+          <select name="shop_type">
+            <option value="">Select business type</option>
+            ${options}
+          </select>
+          <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
+        `;
+
         wrap.appendChild(div);
+        updateBusinessCount();
       }
+
       function removeRow(btn){
         const row = btn.closest('.shop-row');
         if(row) row.remove();
+        updateBusinessCount();
       }
+
+      function updateBusinessCount(){
+        const count = document.querySelectorAll('#shops .shop-row').length;
+        const badge = document.getElementById('businessCount');
+        if (badge) badge.textContent = count;
+      }
+
+      document.addEventListener('DOMContentLoaded', updateBusinessCount);
     </script>
   </div>
 </body>

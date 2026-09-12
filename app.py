@@ -5,6 +5,7 @@ import os
 import json
 import logging
 import sqlite3
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
@@ -18,8 +19,10 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 app.logger.setLevel(logging.ERROR)
 
-ADMIN_USERNAME = "admin"
+ADMIN_USERNAME = "huzaifa"
 ADMIN_PASSWORD = "admin123"
+ADMIN_FIRST_NAME = "Huzaifa"
+ADMIN_PATH = os.environ.get("ADMIN_PATH", "/huzaifa-admin").rstrip("/") or "/huzaifa-admin"
 
 GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJEb5DJgBDvDsRixDy-RGkGCw"
 
@@ -267,11 +270,49 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'app.db')
 def normalize_quiz_types(types):
     selected = []
     seen = set()
-    for item in list(AVAILABLE_TYPES) + (types or []):
+    for item in (types or []):
+        if isinstance(item, str):
+            item = item.strip()
         if item and item not in seen:
             selected.append(item)
             seen.add(item)
     return selected
+
+
+def parse_custom_quiz_types(raw_value):
+    if not raw_value:
+        return []
+    if isinstance(raw_value, str):
+        raw_value = raw_value.splitlines()
+    values = []
+    for item in raw_value:
+        if not isinstance(item, str):
+            continue
+        for chunk in item.split(','):
+            chunk = chunk.strip()
+            if chunk:
+                values.append(chunk)
+    return values
+
+
+def normalize_shop_types(shop):
+    if isinstance(shop.get('types'), list):
+        values = shop.get('types', [])
+    elif isinstance(shop.get('type'), list):
+        values = shop.get('type', [])
+    elif shop.get('type'):
+        values = [shop.get('type')]
+    else:
+        values = []
+    clean = []
+    seen = set()
+    for item in values:
+        if isinstance(item, str):
+            item = item.strip()
+        if item and item not in seen:
+            clean.append(item)
+            seen.add(item)
+    return clean
 
 
 def get_db_connection():
@@ -287,7 +328,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             url TEXT,
-            business_type TEXT
+            business_type TEXT,
+            types TEXT DEFAULT '[]'
         )
     """)
     conn.execute("""
@@ -296,21 +338,49 @@ def init_db():
             name TEXT NOT NULL UNIQUE
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS admins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1
+        )
+    """)
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO admins
+            (username, password_hash, first_name, last_name, phone)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), ADMIN_FIRST_NAME, "", "")
+    )
     conn.commit()
+
+    columns = [row['name'] for row in conn.execute("PRAGMA table_info(businesses)").fetchall()]
+    if 'types' not in columns:
+        conn.execute("ALTER TABLE businesses ADD COLUMN types TEXT DEFAULT '[]'")
 
     shop_count = conn.execute("SELECT COUNT(*) FROM businesses").fetchone()[0]
     if shop_count == 0:
         cfg = load_config_from_file()
         for shop in cfg.get('shops', []):
+            types = normalize_shop_types(shop)
+            primary_type = types[0] if types else (shop.get('type') or '')
             conn.execute(
-                "INSERT INTO businesses (name, url, business_type) VALUES (?, ?, ?)",
-                (shop.get('name', ''), shop.get('url', ''), shop.get('type', ''))
+                "INSERT INTO businesses (name, url, business_type, types) VALUES (?, ?, ?, ?)",
+                (shop.get('name', ''), shop.get('url', ''), primary_type, json.dumps(types, ensure_ascii=False))
             )
 
     type_count = conn.execute("SELECT COUNT(*) FROM quiz_types").fetchone()[0]
+    cfg = load_config_from_file()
+    if type_count and cfg.get('quiz_types') == []:
+        conn.execute('DELETE FROM quiz_types')
+        type_count = 0
     if type_count == 0:
-        cfg = load_config_from_file()
-        types = cfg.get('quiz_types') or AVAILABLE_TYPES
+        types = cfg.get('quiz_types', [])
         for t in types:
             conn.execute("INSERT INTO quiz_types (name) VALUES (?)", (t,))
 
@@ -332,12 +402,28 @@ def load_config_from_file():
 def load_config():
     init_db()
     conn = get_db_connection()
-    shops = [
-        {'name': row['name'], 'url': row['url'], 'type': row['business_type']}
-        for row in conn.execute(
-            "SELECT name, url, business_type FROM businesses ORDER BY id"
-        ).fetchall()
-    ]
+    shops = []
+    for row in conn.execute(
+        "SELECT name, url, business_type, types FROM businesses ORDER BY id"
+    ).fetchall():
+        types = []
+        raw_types = row['types']
+        if raw_types:
+            try:
+                parsed = json.loads(raw_types)
+                if isinstance(parsed, list):
+                    types = parsed
+            except Exception:
+                types = []
+        if not types and row['business_type']:
+            types = [row['business_type']]
+        primary_type = types[0] if types else (row['business_type'] or '')
+        shops.append({
+            'name': row['name'],
+            'url': row['url'],
+            'type': primary_type,
+            'types': types,
+        })
     quiz_types = [
         row['name'] for row in conn.execute("SELECT name FROM quiz_types ORDER BY id").fetchall()
     ]
@@ -357,8 +443,19 @@ def load_config():
 
 def save_config(cfg):
     init_db()
+    normalized_shops = []
+    for shop in cfg.get('shops', []):
+        types = normalize_shop_types(shop)
+        primary_type = types[0] if types else (shop.get('type') or '')
+        normalized_shops.append({
+            'name': shop.get('name', ''),
+            'url': shop.get('url', ''),
+            'type': primary_type,
+            'types': types,
+        })
+
     normalized_cfg = {
-        'shops': cfg.get('shops', []),
+        'shops': normalized_shops,
         'quiz_types': normalize_quiz_types(cfg.get('quiz_types'))
     }
     cfg_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -369,14 +466,52 @@ def save_config(cfg):
     conn.execute('DELETE FROM businesses')
     conn.execute('DELETE FROM quiz_types')
     for shop in normalized_cfg.get('shops', []):
+        types = normalize_shop_types(shop)
+        primary_type = types[0] if types else (shop.get('type') or '')
         conn.execute(
-            'INSERT INTO businesses (name, url, business_type) VALUES (?, ?, ?)',
-            (shop.get('name', ''), shop.get('url', ''), shop.get('type', ''))
+            'INSERT INTO businesses (name, url, business_type, types) VALUES (?, ?, ?, ?)',
+            (shop.get('name', ''), shop.get('url', ''), primary_type, json.dumps(types, ensure_ascii=False))
         )
-    for t in normalized_cfg.get('quiz_types') or AVAILABLE_TYPES:
+    for t in normalized_cfg.get('quiz_types', []):
         conn.execute('INSERT INTO quiz_types (name) VALUES (?)', (t,))
     conn.commit()
     conn.close()
+
+
+def get_admin(username):
+    conn = get_db_connection()
+    admin = conn.execute(
+        "SELECT id, username, password_hash, first_name, last_name, phone "
+        "FROM admins WHERE username = ? AND is_active = 1",
+        (username,)
+    ).fetchone()
+    conn.close()
+    return admin
+
+
+def list_admins():
+    conn = get_db_connection()
+    admins = conn.execute(
+        "SELECT id, username, first_name, last_name, phone "
+        "FROM admins WHERE is_active = 1 ORDER BY id"
+    ).fetchall()
+    conn.close()
+    return admins
+
+
+def create_admin(username, password, first_name, last_name, phone):
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            """
+            INSERT INTO admins (username, password_hash, first_name, last_name, phone)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (username, generate_password_hash(password), first_name, last_name, phone)
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def login_required(view_func):
@@ -397,8 +532,15 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        admin = get_admin(username)
+        if admin and check_password_hash(admin['password_hash'], password):
             session['admin_logged_in'] = True
+            session['admin_username'] = admin['username']
+            session['admin_profile'] = {
+                'first_name': admin['first_name'],
+                'last_name': admin['last_name'],
+                'phone': admin['phone'],
+            }
             return redirect(url_for('admin'))
         error = 'Invalid username or password.'
 
@@ -408,6 +550,8 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('admin_logged_in', None)
+    session.pop('admin_username', None)
+    session.pop('admin_profile', None)
     return redirect(url_for('login'))
 
 
@@ -458,22 +602,38 @@ def generate():
     })
 
 
-@app.route('/admin', methods=['GET', 'POST'])
+@app.route(ADMIN_PATH, methods=['GET', 'POST'])
 @login_required
 def admin():
-    available_types = AVAILABLE_TYPES
     if request.method == 'POST':
         names = request.form.getlist('shop_name')
         urls = request.form.getlist('shop_url')
-        business_types = request.form.getlist('shop_type')
+        shop_types = {}
+        for key, values in request.form.lists():
+            if key.startswith('shop_type_'):
+                index = key.split('_', 2)[2]
+                shop_types.setdefault(index, [])
+                shop_types[index].extend(values)
+
         shops = []
         for i, (n, u) in enumerate(zip(names, urls)):
             n = n.strip()
             u = u.strip()
-            t = business_types[i].strip() if i < len(business_types) else ''
-            if n or u or t:
-                shops.append({'name': n, 'url': u, 'type': t})
-        quiz_types = request.form.getlist('quiz_types')
+            selected_types = []
+            for item in shop_types.get(str(i), []):
+                item = item.strip()
+                if item:
+                    selected_types.append(item)
+            if not selected_types:
+                legacy_types = request.form.getlist('shop_type')
+                if i < len(legacy_types):
+                    selected_types = [legacy_types[i].strip()]
+            if n or u or selected_types:
+                primary = selected_types[0] if selected_types else ''
+                shops.append({'name': n, 'url': u, 'type': primary, 'types': selected_types})
+
+        custom_quiz_types = parse_custom_quiz_types(request.form.get('custom_quiz_types'))
+        quiz_types = request.form.getlist('quiz_types') + custom_quiz_types
         cfg = {
             'shops': shops,
             'quiz_types': normalize_quiz_types(quiz_types)
@@ -488,10 +648,41 @@ def admin():
         shop_url = cfg.get('shop_url', '')
         cfg['shops'] = []
         if shop_name or shop_url:
-            cfg['shops'].append({'name': shop_name, 'url': shop_url, 'type': ''})
+            cfg['shops'].append({'name': shop_name, 'url': shop_url, 'type': '', 'types': []})
     for shop in cfg.get('shops', []):
         shop.setdefault('type', '')
-    return render_template('admin.html', cfg=cfg, available_types=available_types)
+        shop.setdefault('types', normalize_shop_types(shop))
+    available_types = normalize_quiz_types(AVAILABLE_TYPES + cfg.get('quiz_types', []))
+    return render_template(
+        'admin.html',
+        cfg=cfg,
+        available_types=available_types,
+        admins=list_admins(),
+        admin_message=request.args.get('admin_message'),
+        admin_error=request.args.get('admin_error')
+    )
+
+
+@app.route(f'{ADMIN_PATH}/admins', methods=['POST'])
+@login_required
+def add_admin():
+    username = request.form.get('username', '').strip().lower()
+    password = request.form.get('password', '')
+    first_name = request.form.get('first_name', '').strip()
+    last_name = request.form.get('last_name', '').strip()
+    phone = request.form.get('phone', '').strip()
+
+    if not all([username, password, first_name, last_name, phone]):
+        return redirect(url_for('admin', admin_error='All admin fields are required.'))
+    if username == ADMIN_USERNAME:
+        return redirect(url_for('admin', admin_error='The owner account is already reserved.'))
+
+    try:
+        create_admin(username, password, first_name, last_name, phone)
+    except sqlite3.IntegrityError:
+        return redirect(url_for('admin', admin_error='That username already has admin access.'))
+
+    return redirect(url_for('admin', admin_message='Admin access granted.'))
 
 
 if __name__ == "__main__":

@@ -190,6 +190,29 @@
     .type.hidden {
       display: none;
     }
+    .shop-type-box {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 150px;
+      overflow: auto;
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.42);
+      border: 1px solid rgba(148,163,184,0.14);
+    }
+    .type-choice {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(148,163,184,0.18);
+      padding: 6px 8px;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 12px;
+      white-space: nowrap;
+    }
     @media (max-width: 700px) {
       .shop-row {
         grid-template-columns: 1fr;
@@ -225,7 +248,36 @@
       </div>
     </div>
 
-    <form method="post" action="/admin">
+    {% if admin_message %}
+      <div class="panel" style="color:#bbf7d0; border-color:rgba(34,197,94,0.3);">{{ admin_message }}</div>
+    {% endif %}
+    {% if admin_error %}
+      <div class="panel" style="color:#fecaca; border-color:rgba(239,68,68,0.35);">{{ admin_error }}</div>
+    {% endif %}
+
+    <div class="panel">
+      <div class="panel-header">
+        <label>Admin Access</label>
+        <small>Signed in as {{ session.get('admin_profile', {}).get('first_name', session.get('admin_username', '')) }} {{ session.get('admin_profile', {}).get('last_name', '') }}</small>
+      </div>
+      <form method="post" action="{{ url_for('add_admin') }}">
+        <div class="shop-row">
+          <input type="text" name="first_name" placeholder="First name" required />
+          <input type="text" name="last_name" placeholder="Last name" required />
+          <input type="tel" name="phone" placeholder="Phone number" required />
+          <input type="text" name="username" placeholder="Username" required />
+          <input type="password" name="password" placeholder="Password" required />
+        </div>
+        <button class="add-btn" type="submit">Grant Admin Access</button>
+      </form>
+      <div class="types" aria-label="Authorized administrators">
+        {% for admin in admins %}
+          <div class="type">{{ admin.first_name }} {{ admin.last_name }} · {{ admin.username }} · {{ admin.phone }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('admin') }}">
       <div class="panel">
         <div class="panel-header">
           <label>Business Directory</label>
@@ -235,18 +287,21 @@
         <div id="shops">
           {% set shops = cfg.get('shops', []) %}
           {% if shops | length == 0 %}
-            {% set shops = [{'name':'','url':'','type':''}] %}
+            {% set shops = [{'name':'','url':'','type':'','types':[]}] %}
           {% endif %}
           {% for s in shops %}
+            {% set shop_types = s.get('types', []) or ([s.type] if s.type else []) %}
             <div class="shop-row">
               <input type="text" name="shop_name" placeholder="Business name" value="{{ s.name }}" />
               <input type="text" name="shop_url" placeholder="Business URL" value="{{ s.url }}" />
-              <select name="shop_type">
-                <option value="">Select business type</option>
+              <div class="shop-type-box" data-index="{{ loop.index0 }}">
                 {% for t in available_types %}
-                  <option value="{{ t }}" {% if s.type == t %}selected{% endif %}>{{ t }}</option>
+                  <label class="type-choice">
+                    <input type="checkbox" name="shop_type_{{ loop.index0 }}" value="{{ t }}" {% if t in shop_types %}checked{% endif %} />
+                    <span>{{ t }}</span>
+                  </label>
                 {% endfor %}
-              </select>
+              </div>
               <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
             </div>
           {% endfor %}
@@ -255,13 +310,18 @@
 
       <div class="panel">
         <label>Quiz Types (select one or more)</label>
-        <input id="adminTypeSearch" type="text" placeholder="Search business type..." style="margin-top: 8px;" />
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+          <input id="adminTypeSearch" type="text" placeholder="Search business type..." style="flex:1; min-width:220px; margin-bottom:0;" />
+          <button type="button" class="add-btn" id="adminTypeSearchBtn" style="margin-top:0;">Search</button>
+        </div>
         <div class="types" id="quizTypeList">
           {% set selected = cfg.get('quiz_types', []) %}
           {% for t in available_types %}
             <label class="type"><input type="checkbox" name="quiz_types" value="{{ t }}" {% if t in selected %}checked{% endif %}/> {{ t }}</label>
           {% endfor %}
         </div>
+        <label style="margin-top:20px;">Add custom business types</label>
+        <input type="text" name="custom_quiz_types" placeholder="Add new types separated by commas, e.g. Car Wash, Bike Accessories" />
       </div>
 
       <button class="submit" type="submit">Save Settings</button>
@@ -271,15 +331,26 @@
       const AVAILABLE_TYPES = {{ available_types|tojson }};
 
       const typeSearch = document.getElementById('adminTypeSearch');
+      const adminTypeSearchBtn = document.getElementById('adminTypeSearchBtn');
+
+      function applyTypeFilter(inputElement, targetSelector) {
+        const query = (inputElement ? inputElement.value.trim().toLowerCase() : '');
+        document.querySelectorAll(targetSelector).forEach((label) => {
+          const text = label.textContent.toLowerCase();
+          const match = !query || text.includes(query);
+          label.classList.toggle('hidden', !match);
+        });
+      }
+
       if (typeSearch) {
         typeSearch.addEventListener('input', function () {
-          const query = this.value.trim().toLowerCase();
-          document.querySelectorAll('#quizTypeList .type').forEach((label) => {
-            const text = label.textContent.toLowerCase();
-            const match = !query || text.includes(query);
-            label.classList.toggle('hidden', !match);
-          });
+          applyTypeFilter(this, '#quizTypeList .type');
         });
+        if (adminTypeSearchBtn) {
+          adminTypeSearchBtn.addEventListener('click', function () {
+            applyTypeFilter(typeSearch, '#quizTypeList .type');
+          });
+        }
       }
 
       function addRow(){
@@ -288,16 +359,20 @@
         div.className = 'shop-row';
 
         const options = AVAILABLE_TYPES.map(type => {
-          return `<option value="${type}">${type}</option>`;
+          return `
+            <label class="type-choice">
+              <input type="checkbox" name="shop_type_${document.querySelectorAll('#shops .shop-row').length}" value="${type}" />
+              <span>${type}</span>
+            </label>
+          `;
         }).join('');
 
         div.innerHTML = `
           <input type="text" name="shop_name" placeholder="Business name" value="" />
           <input type="text" name="shop_url" placeholder="Business URL" value="" />
-          <select name="shop_type">
-            <option value="">Select business type</option>
+          <div class="shop-type-box">
             ${options}
-          </select>
+          </div>
           <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
         `;
 

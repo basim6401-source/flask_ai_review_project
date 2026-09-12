@@ -10,3 +10,4 @@ instance/
 coverage/
 .env
 *.sqlite3
+*.db

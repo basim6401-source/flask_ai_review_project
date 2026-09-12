@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin Login</title>
+  <title>Restricted Access</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -27,18 +27,6 @@
       border-radius: 22px;
       padding: 30px 26px 24px;
       box-shadow: 0 24px 50px rgba(15, 23, 42, 0.45);
-    }
-    .badge {
-      display: inline-block;
-      background: rgba(127, 90, 240, 0.18);
-      color: #ddd6fe;
-      padding: 7px 12px;
-      border-radius: 999px;
-      font-size: 0.76rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 18px;
     }
     h2 {
       margin: 0 0 18px;
@@ -117,9 +105,8 @@
 </head>
 <body>
   <div class="card">
-    <div class="badge">Admin</div>
-    <h2>Sign In</h2>
-    <p class="subtitle">Manage shops, review types, and the AI review generator.</p>
+    <h2>Restricted Access</h2>
+    <p class="subtitle">Secure sign in for authorized management.</p>
 
     {% if error %}
       <div class="error">{{ error }}</div>
@@ -135,8 +122,8 @@
       <button type="submit">Login</button>
     </form>
 
-    <div class="links">
-      <a class="link" href="{{ url_for('home') }}">← Back to Home</a>
+    <div class="links" style="justify-content:center;">
+      <span class="link" style="opacity:0.7;">Authorized users only</span>
     </div>
   </div>
 </body>

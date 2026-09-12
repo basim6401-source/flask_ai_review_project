@@ -1,56 +1,18 @@
 {
   "shops": [
     {
-      "name": "Clinic Pro",
-      "url": "https://clinic.example",
-      "type": "Dental Clinic"
-    },
-    {
-      "name": "North Spice",
-      "url": "https://spice.example",
-      "type": "South Indian Vegetarian"
+      "name": "Custom Shop",
+      "url": "https://custom.example",
+      "type": "Car Wash",
+      "types": [
+        "Car Wash"
+      ]
     }
   ],
   "quiz_types": [
-    "Fast Food",
-    "Sea Food",
-    "Desserts",
-    "Vegetarian",
-    "South Indian Vegetarian",
-    "North Indian Vegetarian",
-    "Biryani Shop",
-    "Dry Indian Snacks",
-    "Punjabi",
-    "Chinese",
-    "Italian",
-    "Mughlai",
     "Dental Clinic",
-    "Salon",
-    "Spa",
     "Gym",
-    "Auto Garage",
-    "Bike Garage",
-    "Super Bike Garage",
-    "Juice Shop",
-    "Medical Shop",
-    "Grocery Shop",
-    "Mens Clothing",
-    "Woman Traditional Wear",
-    "Tire Shop",
-    "Toys Shop",
-    "Kids Clothing",
-    "Ladies PG",
-    "Gents PG",
-    "Hotel",
-    "School",
-    "Hostel",
-    "Mobile Shop",
-    "Footwear Shop",
-    "Mens Salon",
-    "Auto Spare Parts Shop",
-    "Hospital",
-    "Real Estate",
-    "Asian",
-    "Other"
+    "Car Wash",
+    "Bike Accessories"
   ]
 }

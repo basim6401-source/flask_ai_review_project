@@ -11,3 +11,5 @@ services:
         value: production
       - key: SECRET_KEY
         generateValue: true
+      - key: ADMIN_PATH
+        value: /huzaifa-admin

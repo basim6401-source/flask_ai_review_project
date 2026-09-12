@@ -4,7 +4,7 @@ from app import app
 app.testing = True
 client = app.test_client()
 
-paths = ['/', '/generate', '/admin']
+paths = ['/', '/generate', '/huzaifa-admin']
 for p in paths:
     try:
         client.get(p)

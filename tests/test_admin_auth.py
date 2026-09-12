@@ -19,6 +19,20 @@ class AdminAuthTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'href="/login"', response.data)
 
+    def test_admin_can_update_google_review_url(self):
+        with self.client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+        review_url = 'https://search.google.com/local/writereview?placeid=custom-place'
+        response = self.client.post(ADMIN_PATH, data={
+            'shop_name': ['Test Shop'],
+            'shop_url': ['https://test.example'],
+            'google_review_url': review_url
+        }, follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+
+        response = self.client.get('/generate')
+        self.assertEqual(response.get_json()['google_url'], review_url)
+
     def test_admin_requires_login(self):
         response = self.client.get(ADMIN_PATH, follow_redirects=False)
         self.assertEqual(response.status_code, 302)
@@ -53,6 +67,37 @@ class AdminAuthTestCase(unittest.TestCase):
             self.assertEqual(sess['admin_profile']['first_name'], 'Amina')
             self.assertEqual(sess['admin_profile']['last_name'], 'Khan')
             self.assertEqual(sess['admin_profile']['phone'], '5550100')
+
+    def test_owner_can_delete_granted_admin_access(self):
+        with self.client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+            sess['admin_username'] = 'huzaifa'
+        username = f"delete_admin_{uuid.uuid4().hex[:8]}"
+        self.client.post(f'{ADMIN_PATH}/admins', data={
+            'first_name': 'Delete',
+            'last_name': 'Me',
+            'phone': '5550101',
+            'username': username,
+            'password': 'secure-password'
+        })
+        response = self.client.post(f'{ADMIN_PATH}/admins/delete', data={'username': username}, follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+
+        self.client.get('/logout')
+        response = self.client.post('/login', data={
+            'username': username,
+            'password': 'secure-password'
+        }, follow_redirects=False)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Invalid username or password', response.data)
+
+    def test_owner_admin_access_cannot_be_deleted(self):
+        with self.client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+            sess['admin_username'] = 'huzaifa'
+        response = self.client.post(f'{ADMIN_PATH}/admins/delete', data={'username': 'huzaifa'}, follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('owner', response.headers.get('Location', ''))
 
     def test_generate_review_matches_business_type(self):
         response = self.client.get('/generate?type=Dental%20Clinic')

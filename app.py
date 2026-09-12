@@ -401,6 +401,8 @@ def load_config_from_file():
 
 def load_config():
     init_db()
+    file_cfg = load_config_from_file()
+    google_review_url = file_cfg.get('google_review_url', GOOGLE_REVIEW_URL)
     conn = get_db_connection()
     shops = []
     for row in conn.execute(
@@ -432,13 +434,17 @@ def load_config():
     normalized = normalize_quiz_types(quiz_types)
 
     if not shops and not normalized:
-        cfg = load_config_from_file()
+        cfg = file_cfg
         if cfg:
             save_config(cfg)
             return cfg
-        return {'shops': [], 'quiz_types': AVAILABLE_TYPES}
+        return {'shops': [], 'quiz_types': AVAILABLE_TYPES, 'google_review_url': google_review_url}
 
-    return {'shops': shops, 'quiz_types': normalized}
+    return {
+        'shops': shops,
+        'quiz_types': normalized,
+        'google_review_url': google_review_url,
+    }
 
 
 def save_config(cfg):
@@ -456,7 +462,8 @@ def save_config(cfg):
 
     normalized_cfg = {
         'shops': normalized_shops,
-        'quiz_types': normalize_quiz_types(cfg.get('quiz_types'))
+        'quiz_types': normalize_quiz_types(cfg.get('quiz_types')),
+        'google_review_url': (cfg.get('google_review_url') or GOOGLE_REVIEW_URL).strip()
     }
     cfg_path = os.path.join(os.path.dirname(__file__), 'config.json')
     with open(cfg_path, 'w', encoding='utf-8') as f:
@@ -510,6 +517,19 @@ def create_admin(username, password, first_name, last_name, phone):
             (username, generate_password_hash(password), first_name, last_name, phone)
         )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def deactivate_admin(username):
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute(
+            "UPDATE admins SET is_active = 0 WHERE username = ? AND is_active = 1",
+            (username,)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
     finally:
         conn.close()
 
@@ -568,9 +588,10 @@ def home():
         shop.setdefault('type', '')
 
     quiz_types = normalize_quiz_types(cfg.get('quiz_types'))
+    google_review_url = cfg.get('google_review_url', GOOGLE_REVIEW_URL)
     return render_template(
         "index.html",
-        google_url=GOOGLE_REVIEW_URL,
+        google_url=google_review_url,
         shops=shops,
         available_types=quiz_types,
         admin_url=url_for('login')
@@ -584,6 +605,7 @@ def generate():
     # load config to read available quiz types
     cfg = load_config()
     available = cfg.get('quiz_types', AVAILABLE_TYPES)
+    google_review_url = cfg.get('google_review_url', GOOGLE_REVIEW_URL)
 
     # if no type provided, default to first admin-selected type (if any)
     if not qtype and available:
@@ -603,7 +625,7 @@ def generate():
 
     return jsonify({
         "reviews": reviews,
-        "google_url": GOOGLE_REVIEW_URL,
+        "google_url": google_review_url,
         "type": qtype or ""
     })
 
@@ -640,15 +662,18 @@ def admin():
 
         custom_quiz_types = parse_custom_quiz_types(request.form.get('custom_quiz_types'))
         quiz_types = request.form.getlist('quiz_types') + custom_quiz_types
+        google_review_url = request.form.get('google_review_url', '').strip() or GOOGLE_REVIEW_URL
         cfg = {
             'shops': shops,
-            'quiz_types': normalize_quiz_types(quiz_types)
+            'quiz_types': normalize_quiz_types(quiz_types),
+            'google_review_url': google_review_url,
         }
         save_config(cfg)
         return redirect(url_for('home'))
 
     cfg = load_config()
     cfg['quiz_types'] = normalize_quiz_types(cfg.get('quiz_types'))
+    cfg.setdefault('google_review_url', GOOGLE_REVIEW_URL)
     if 'shops' not in cfg:
         shop_name = cfg.get('shop_name', '')
         shop_url = cfg.get('shop_url', '')
@@ -689,6 +714,20 @@ def add_admin():
         return redirect(url_for('admin', admin_error='That username already has admin access.'))
 
     return redirect(url_for('admin', admin_message='Admin access granted.'))
+
+
+@app.route(f'{ADMIN_PATH}/admins/delete', methods=['POST'])
+@login_required
+def delete_admin():
+    username = request.form.get('username', '').strip().lower()
+    current_username = session.get('admin_username', '').lower()
+    if username == ADMIN_USERNAME:
+        return redirect(url_for('admin', admin_error='The owner account cannot be deleted.'))
+    if username == current_username:
+        return redirect(url_for('admin', admin_error='You cannot delete your own admin access.'))
+    if not username or not deactivate_admin(username):
+        return redirect(url_for('admin', admin_error='Admin account not found.'))
+    return redirect(url_for('admin', admin_message='Admin access deleted.'))
 
 
 if __name__ == "__main__":

@@ -272,7 +272,17 @@
       </form>
       <div class="types" aria-label="Authorized administrators">
         {% for admin in admins %}
-          <div class="type">{{ admin.first_name }} {{ admin.last_name }} · {{ admin.username }} · {{ admin.phone }}</div>
+          <div class="type">
+            <span>{{ admin.first_name }} {{ admin.last_name }} · {{ admin.username }} · {{ admin.phone }}</span>
+            {% if admin.username == 'huzaifa' %}
+              <span style="opacity:.65;">Owner</span>
+            {% else %}
+              <form method="post" action="{{ url_for('delete_admin') }}" style="margin:0;">
+                <input type="hidden" name="username" value="{{ admin.username }}" />
+                <button class="remove" type="submit" onclick="return confirm('Delete admin access for {{ admin.username }}?');">Delete</button>
+              </form>
+            {% endif %}
+          </div>
         {% endfor %}
       </div>
     </div>
@@ -322,6 +332,11 @@
         </div>
         <label style="margin-top:20px;">Add custom business types</label>
         <input type="text" name="custom_quiz_types" placeholder="Add new types separated by commas, e.g. Car Wash, Bike Accessories" />
+      </div>
+
+      <div class="panel">
+        <label for="googleReviewUrl">Google Review URL</label>
+        <input id="googleReviewUrl" type="url" name="google_review_url" value="{{ cfg.get('google_review_url', '') }}" placeholder="https://search.google.com/local/writereview?placeid=..." required />
       </div>
 
       <button class="submit" type="submit">Save Settings</button>

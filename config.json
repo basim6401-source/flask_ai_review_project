@@ -1,19 +1,22 @@
 {
   "shops": [
     {
-      "name": "Custom Shop",
-      "url": "https://custom.example",
+      "name": "Business A",
+      "url": "https://first.example",
+      "google_review_url": "https://search.google.com/local/writereview?placeid=first-place",
       "type": "Car Wash",
       "types": [
         "Car Wash"
       ]
+    },
+    {
+      "name": "Business B",
+      "url": "https://second.example",
+      "google_review_url": "https://search.google.com/local/writereview?placeid=second-place",
+      "type": "",
+      "types": []
     }
   ],
-  "quiz_types": [
-    "Dental Clinic",
-    "Gym",
-    "Car Wash",
-    "Bike Accessories"
-  ],
+  "quiz_types": [],
   "google_review_url": "https://search.google.com/local/writereview?placeid=ChIJEb5DJgBDvDsRixDy-RGkGCw"
 }

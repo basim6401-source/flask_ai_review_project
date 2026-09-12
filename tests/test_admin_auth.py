@@ -33,6 +33,34 @@ class AdminAuthTestCase(unittest.TestCase):
         response = self.client.get('/generate')
         self.assertEqual(response.get_json()['google_url'], review_url)
 
+    def test_business_has_its_own_google_review_url(self):
+        with self.client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+        review_url = 'https://search.google.com/local/writereview?placeid=business-place'
+        self.client.post(ADMIN_PATH, data={
+            'shop_name': ['Business A'],
+            'shop_url': ['https://business.example'],
+            'shop_google_review_url': [review_url]
+        })
+        response = self.client.get('/generate?shop=Business%20A')
+        self.assertEqual(response.get_json()['google_url'], review_url)
+
+    def test_multiple_businesses_have_independent_google_review_urls(self):
+        with self.client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+        first_url = 'https://search.google.com/local/writereview?placeid=first-place'
+        second_url = 'https://search.google.com/local/writereview?placeid=second-place'
+        self.client.post(ADMIN_PATH, data={
+            'shop_name': ['Business A', 'Business B'],
+            'shop_url': ['https://first.example', 'https://second.example'],
+            'shop_google_review_url': [first_url, second_url]
+        })
+
+        first_response = self.client.get('/generate?shop=Business%20A')
+        second_response = self.client.get('/generate?shop=Business%20B')
+        self.assertEqual(first_response.get_json()['google_url'], first_url)
+        self.assertEqual(second_response.get_json()['google_url'], second_url)
+
     def test_admin_requires_login(self):
         response = self.client.get(ADMIN_PATH, follow_redirects=False)
         self.assertEqual(response.status_code, 302)

@@ -209,6 +209,14 @@ textarea{
         Generate Reviews
     </button>
 
+    {% if shops|length > 1 %}
+    <select id="businessSelect" class="business-select" aria-label="Select business">
+        {% for shop in shops %}
+        <option value="{{ shop.name }}">{{ shop.name }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+
     <a class="admin-link" href="{{ admin_url }}">Admin sign in</a>
 
     <div id="reviews"></div>
@@ -225,7 +233,11 @@ async function generateReview() {
 
     try {
 
-        const q = DEFAULT_TYPE ? `?type=${encodeURIComponent(DEFAULT_TYPE)}` : '';
+        const params = new URLSearchParams();
+        if (DEFAULT_TYPE) params.set('type', DEFAULT_TYPE);
+        const businessSelect = document.getElementById('businessSelect');
+        if (businessSelect) params.set('shop', businessSelect.value);
+        const q = params.toString() ? `?${params.toString()}` : '';
         const response = await fetch(`/generate${q}`);
         const data = await response.json();
 

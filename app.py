@@ -328,6 +328,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             url TEXT,
+            google_review_url TEXT,
             business_type TEXT,
             types TEXT DEFAULT '[]'
         )
@@ -360,6 +361,8 @@ def init_db():
     conn.commit()
 
     columns = [row['name'] for row in conn.execute("PRAGMA table_info(businesses)").fetchall()]
+    if 'google_review_url' not in columns:
+        conn.execute("ALTER TABLE businesses ADD COLUMN google_review_url TEXT")
     if 'types' not in columns:
         conn.execute("ALTER TABLE businesses ADD COLUMN types TEXT DEFAULT '[]'")
 
@@ -370,8 +373,8 @@ def init_db():
             types = normalize_shop_types(shop)
             primary_type = types[0] if types else (shop.get('type') or '')
             conn.execute(
-                "INSERT INTO businesses (name, url, business_type, types) VALUES (?, ?, ?, ?)",
-                (shop.get('name', ''), shop.get('url', ''), primary_type, json.dumps(types, ensure_ascii=False))
+                "INSERT INTO businesses (name, url, google_review_url, business_type, types) VALUES (?, ?, ?, ?, ?)",
+                (shop.get('name', ''), shop.get('url', ''), shop.get('google_review_url', ''), primary_type, json.dumps(types, ensure_ascii=False))
             )
 
     type_count = conn.execute("SELECT COUNT(*) FROM quiz_types").fetchone()[0]
@@ -406,7 +409,7 @@ def load_config():
     conn = get_db_connection()
     shops = []
     for row in conn.execute(
-        "SELECT name, url, business_type, types FROM businesses ORDER BY id"
+        "SELECT name, url, google_review_url, business_type, types FROM businesses ORDER BY id"
     ).fetchall():
         types = []
         raw_types = row['types']
@@ -423,6 +426,7 @@ def load_config():
         shops.append({
             'name': row['name'],
             'url': row['url'],
+            'google_review_url': row['google_review_url'] or '',
             'type': primary_type,
             'types': types,
         })
@@ -456,6 +460,7 @@ def save_config(cfg):
         normalized_shops.append({
             'name': shop.get('name', ''),
             'url': shop.get('url', ''),
+            'google_review_url': (shop.get('google_review_url') or '').strip(),
             'type': primary_type,
             'types': types,
         })
@@ -476,8 +481,8 @@ def save_config(cfg):
         types = normalize_shop_types(shop)
         primary_type = types[0] if types else (shop.get('type') or '')
         conn.execute(
-            'INSERT INTO businesses (name, url, business_type, types) VALUES (?, ?, ?, ?)',
-            (shop.get('name', ''), shop.get('url', ''), primary_type, json.dumps(types, ensure_ascii=False))
+            'INSERT INTO businesses (name, url, google_review_url, business_type, types) VALUES (?, ?, ?, ?, ?)',
+            (shop.get('name', ''), shop.get('url', ''), shop.get('google_review_url', ''), primary_type, json.dumps(types, ensure_ascii=False))
         )
     for t in normalized_cfg.get('quiz_types', []):
         conn.execute('INSERT INTO quiz_types (name) VALUES (?)', (t,))
@@ -583,9 +588,10 @@ def home():
         shop_name = cfg.get('shop_name', '')
         shop_url = cfg.get('shop_url', '')
         if shop_name or shop_url:
-            shops = [{'name': shop_name, 'url': shop_url, 'type': ''}]
+            shops = [{'name': shop_name, 'url': shop_url, 'google_review_url': '', 'type': ''}]
     for shop in shops:
         shop.setdefault('type', '')
+        shop.setdefault('google_review_url', '')
 
     quiz_types = normalize_quiz_types(cfg.get('quiz_types'))
     google_review_url = cfg.get('google_review_url', GOOGLE_REVIEW_URL)
@@ -606,6 +612,12 @@ def generate():
     cfg = load_config()
     available = cfg.get('quiz_types', AVAILABLE_TYPES)
     google_review_url = cfg.get('google_review_url', GOOGLE_REVIEW_URL)
+    shop_name = request.args.get('shop', '').strip()
+    if shop_name:
+        for shop in cfg.get('shops', []):
+            if shop.get('name') == shop_name and shop.get('google_review_url'):
+                google_review_url = shop['google_review_url']
+                break
 
     # if no type provided, default to first admin-selected type (if any)
     if not qtype and available:
@@ -637,6 +649,7 @@ def admin():
         existing_shops = load_config().get('shops', [])
         names = request.form.getlist('shop_name')
         urls = request.form.getlist('shop_url')
+        review_urls = request.form.getlist('shop_google_review_url')
         shop_types = {}
         for key, values in request.form.lists():
             if key.startswith('shop_type_'):
@@ -659,9 +672,10 @@ def admin():
                     selected_types = [legacy_types[i].strip()]
             if not selected_types and i < len(existing_shops):
                 selected_types = normalize_shop_types(existing_shops[i])
-            if n or u or selected_types:
+            review_url = review_urls[i].strip() if i < len(review_urls) else ''
+            if n or u or selected_types or review_url:
                 primary = selected_types[0] if selected_types else ''
-                shops.append({'name': n, 'url': u, 'type': primary, 'types': selected_types})
+                shops.append({'name': n, 'url': u, 'google_review_url': review_url, 'type': primary, 'types': selected_types})
 
         custom_quiz_types = parse_custom_quiz_types(request.form.get('custom_quiz_types'))
         quiz_types = request.form.getlist('quiz_types') + custom_quiz_types
@@ -682,9 +696,10 @@ def admin():
         shop_url = cfg.get('shop_url', '')
         cfg['shops'] = []
         if shop_name or shop_url:
-            cfg['shops'].append({'name': shop_name, 'url': shop_url, 'type': '', 'types': []})
+            cfg['shops'].append({'name': shop_name, 'url': shop_url, 'google_review_url': '', 'type': '', 'types': []})
     for shop in cfg.get('shops', []):
         shop.setdefault('type', '')
+        shop.setdefault('google_review_url', '')
         shop.setdefault('types', normalize_shop_types(shop))
     available_types = normalize_quiz_types(AVAILABLE_TYPES + cfg.get('quiz_types', []))
     return render_template(

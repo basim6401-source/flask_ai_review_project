@@ -26,6 +26,7 @@ body{
 }
 
 .container{
+    position:relative;
     width:100%;
     max-width:950px;
     padding:35px;
@@ -55,9 +56,15 @@ h1{
 }
 
 .admin-link{
-    display:block;
+    position:absolute;
+    top:20px;
+    right:28px;
+    display:inline-block;
     width:max-content;
-    margin:22px auto 0;
+    padding:8px 12px;
+    border:1px solid rgba(255,255,255,0.2);
+    border-radius:9px;
+    background:rgba(15,23,42,0.28);
     color:rgba(255,255,255,0.62);
     font-size:13px;
     text-decoration:none;
@@ -66,6 +73,7 @@ h1{
 .admin-link:hover{
     color:white;
     text-decoration:underline;
+    background:rgba(255,255,255,0.1);
 }
 
 .btn{

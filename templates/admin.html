@@ -190,29 +190,6 @@
     .type.hidden {
       display: none;
     }
-    .shop-type-box {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      max-height: 150px;
-      overflow: auto;
-      padding: 8px;
-      border-radius: 10px;
-      background: rgba(15, 23, 42, 0.42);
-      border: 1px solid rgba(148,163,184,0.14);
-    }
-    .type-choice {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(148,163,184,0.18);
-      padding: 6px 8px;
-      border-radius: 8px;
-      color: #e2e8f0;
-      font-size: 12px;
-      white-space: nowrap;
-    }
     @media (max-width: 700px) {
       .shop-row {
         grid-template-columns: 1fr;
@@ -300,18 +277,9 @@
             {% set shops = [{'name':'','url':'','type':'','types':[]}] %}
           {% endif %}
           {% for s in shops %}
-            {% set shop_types = s.get('types', []) or ([s.type] if s.type else []) %}
             <div class="shop-row">
               <input type="text" name="shop_name" placeholder="Business name" value="{{ s.name }}" />
               <input type="text" name="shop_url" placeholder="Business URL" value="{{ s.url }}" />
-              <div class="shop-type-box" data-index="{{ loop.index0 }}">
-                {% for t in available_types %}
-                  <label class="type-choice">
-                    <input type="checkbox" name="shop_type_{{ loop.index0 }}" value="{{ t }}" {% if t in shop_types %}checked{% endif %} />
-                    <span>{{ t }}</span>
-                  </label>
-                {% endfor %}
-              </div>
               <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
             </div>
           {% endfor %}
@@ -373,21 +341,9 @@
         const div = document.createElement('div');
         div.className = 'shop-row';
 
-        const options = AVAILABLE_TYPES.map(type => {
-          return `
-            <label class="type-choice">
-              <input type="checkbox" name="shop_type_${document.querySelectorAll('#shops .shop-row').length}" value="${type}" />
-              <span>${type}</span>
-            </label>
-          `;
-        }).join('');
-
         div.innerHTML = `
           <input type="text" name="shop_name" placeholder="Business name" value="" />
           <input type="text" name="shop_url" placeholder="Business URL" value="" />
-          <div class="shop-type-box">
-            ${options}
-          </div>
           <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
         `;
 

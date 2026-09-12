@@ -634,6 +634,7 @@ def generate():
 @login_required
 def admin():
     if request.method == 'POST':
+        existing_shops = load_config().get('shops', [])
         names = request.form.getlist('shop_name')
         urls = request.form.getlist('shop_url')
         shop_types = {}
@@ -656,6 +657,8 @@ def admin():
                 legacy_types = request.form.getlist('shop_type')
                 if i < len(legacy_types):
                     selected_types = [legacy_types[i].strip()]
+            if not selected_types and i < len(existing_shops):
+                selected_types = normalize_shop_types(existing_shops[i])
             if n or u or selected_types:
                 primary = selected_types[0] if selected_types else ''
                 shops.append({'name': n, 'url': u, 'type': primary, 'types': selected_types})

@@ -568,7 +568,13 @@ def home():
         shop.setdefault('type', '')
 
     quiz_types = normalize_quiz_types(cfg.get('quiz_types'))
-    return render_template("index.html", google_url=GOOGLE_REVIEW_URL, shops=shops, available_types=quiz_types)
+    return render_template(
+        "index.html",
+        google_url=GOOGLE_REVIEW_URL,
+        shops=shops,
+        available_types=quiz_types,
+        admin_url=url_for('login')
+    )
 
 @app.route("/generate")
 def generate():

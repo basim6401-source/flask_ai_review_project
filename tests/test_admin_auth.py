@@ -14,6 +14,11 @@ class AdminAuthTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Restricted Access', response.data)
 
+    def test_home_page_generates_admin_sign_in_link(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'href="/login"', response.data)
+
     def test_admin_requires_login(self):
         response = self.client.get(ADMIN_PATH, follow_redirects=False)
         self.assertEqual(response.status_code, 302)

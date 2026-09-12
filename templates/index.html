@@ -54,6 +54,20 @@ h1{
     font-size:16px;
 }
 
+.admin-link{
+    display:block;
+    width:max-content;
+    margin:22px auto 0;
+    color:rgba(255,255,255,0.62);
+    font-size:13px;
+    text-decoration:none;
+}
+
+.admin-link:hover{
+    color:white;
+    text-decoration:underline;
+}
+
 .btn{
     display:block;
     margin:auto;
@@ -174,7 +188,7 @@ textarea{
 
 <div class="container">
 
-    <h1>⭐ AI Google Review Generator</h1>
+    <h1>⭐ AI text Assistant</h1>
     <p class="subtitle">
         powered by Huzeetap
     </p>
@@ -186,6 +200,8 @@ textarea{
     <button class="btn" onclick="generateReview()">
         Generate Reviews
     </button>
+
+    <a class="admin-link" href="{{ admin_url }}">Admin sign in</a>
 
     <div id="reviews"></div>
 

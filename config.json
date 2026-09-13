@@ -17,6 +17,8 @@
       "types": []
     }
   ],
-  "quiz_types": [],
+  "quiz_types": [
+    "Car Wash"
+  ],
   "google_review_url": "https://search.google.com/local/writereview?placeid=ChIJEb5DJgBDvDsRixDy-RGkGCw"
 }

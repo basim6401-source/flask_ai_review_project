@@ -157,6 +157,28 @@
       border: 1px solid rgba(239,68,68,0.2);
       min-width: 110px;
     }
+    .directory-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .directory-update, .directory-delete {
+      border: 1px solid transparent;
+      border-radius: 9px;
+      padding: 9px 12px;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .directory-update {
+      background: rgba(20,184,166,0.2);
+      border-color: rgba(45,212,191,0.35);
+    }
+    .directory-delete {
+      background: rgba(239,68,68,0.14);
+      border-color: rgba(239,68,68,0.25);
+      color: #fecaca;
+    }
     .add-btn, .submit {
       background: linear-gradient(135deg, #7F5AF0, #6246EA);
       color: #fff;
@@ -213,9 +235,42 @@
       font-size: 12px;
       white-space: nowrap;
     }
+    .profile-list {
+      display: none;
+      margin-top: 14px;
+      gap: 8px;
+      flex-direction: column;
+    }
+    .profile-list.open {
+      display: flex;
+    }
+    .profile-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(15,23,42,0.42);
+      border: 1px solid rgba(148,163,184,0.14);
+      color: #e2e8f0;
+    }
+    .profile-item small {
+      display: block;
+      color: rgba(226,232,240,0.65);
+      margin-top: 3px;
+    }
+    .profile-item a {
+      color: #c7d2fe;
+      text-decoration: none;
+      white-space: nowrap;
+    }
     @media (max-width: 700px) {
       .shop-row {
         grid-template-columns: 1fr;
+      }
+      .directory-actions {
+        width: 100%;
       }
       .stats {
         grid-template-columns: 1fr;
@@ -291,7 +346,24 @@
       <div class="panel">
         <div class="panel-header">
           <label>Business Directory</label>
-          <button type="button" class="add-btn" onclick="addRow()">+ Add Business</button>
+          <div>
+            <button type="button" class="add-btn" onclick="toggleProfiles()">Existing Business Profiles</button>
+            <button type="button" class="add-btn" onclick="addRow()">+ Add Business</button>
+          </div>
+        </div>
+
+        <div id="existingProfiles" class="profile-list" aria-label="Existing business profiles">
+          {% for s in cfg.get('shops', []) %}
+            <div class="profile-item">
+              <div>
+                <strong>{{ s.name or 'Unnamed business' }}</strong>
+                <small>Saved business profile</small>
+              </div>
+              <a href="#business-row-{{ loop.index0 }}">Edit</a>
+            </div>
+          {% else %}
+            <div class="profile-item">No existing business profiles.</div>
+          {% endfor %}
         </div>
 
         <div id="shops">
@@ -301,9 +373,8 @@
           {% endif %}
           {% for s in shops %}
             {% set shop_types = s.get('types', []) or ([s.type] if s.type else []) %}
-            <div class="shop-row">
+            <div id="business-row-{{ loop.index0 }}" class="shop-row">
               <input type="text" name="shop_name" placeholder="Business name" value="{{ s.name }}" />
-              <input type="text" name="shop_url" placeholder="Business URL" value="{{ s.url }}" />
               <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="{{ s.google_review_url|default('') }}" />
               <div class="shop-type-box">
                 {% for t in available_types %}
@@ -313,31 +384,13 @@
                   </label>
                 {% endfor %}
               </div>
-              <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
+              <div class="directory-actions">
+                <button class="directory-update" type="submit" name="directory_action" value="update:{{ loop.index0 }}">Update</button>
+                <button class="directory-delete" type="submit" name="directory_action" value="delete:{{ loop.index0 }}">Delete</button>
+              </div>
             </div>
           {% endfor %}
         </div>
-      </div>
-
-      <div class="panel">
-        <label>Quiz Types (select one or more)</label>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;">
-          <input id="adminTypeSearch" type="text" placeholder="Search business type..." style="flex:1; min-width:220px; margin-bottom:0;" />
-          <button type="button" class="add-btn" id="adminTypeSearchBtn" style="margin-top:0;">Search</button>
-        </div>
-        <div class="types" id="quizTypeList">
-          {% set selected = cfg.get('quiz_types', []) %}
-          {% for t in available_types %}
-            <label class="type"><input type="checkbox" name="quiz_types" value="{{ t }}" {% if t in selected %}checked{% endif %}/> {{ t }}</label>
-          {% endfor %}
-        </div>
-        <label style="margin-top:20px;">Add custom business types</label>
-        <input type="text" name="custom_quiz_types" placeholder="Add new types separated by commas, e.g. Car Wash, Bike Accessories" />
-      </div>
-
-      <div class="panel">
-        <label for="googleReviewUrl">Google Review URL</label>
-        <input id="googleReviewUrl" type="url" name="google_review_url" value="{{ cfg.get('google_review_url', '') }}" placeholder="https://search.google.com/local/writereview?placeid=..." required />
       </div>
 
       <button class="submit" type="submit">Save Settings</button>
@@ -346,37 +399,14 @@
     <script>
       const AVAILABLE_TYPES = {{ available_types|tojson }};
 
-      const typeSearch = document.getElementById('adminTypeSearch');
-      const adminTypeSearchBtn = document.getElementById('adminTypeSearchBtn');
-
-      function applyTypeFilter(inputElement, targetSelector) {
-        const query = (inputElement ? inputElement.value.trim().toLowerCase() : '');
-        document.querySelectorAll(targetSelector).forEach((label) => {
-          const text = label.textContent.toLowerCase();
-          const match = !query || text.includes(query);
-          label.classList.toggle('hidden', !match);
-        });
-      }
-
-      if (typeSearch) {
-        typeSearch.addEventListener('input', function () {
-          applyTypeFilter(this, '#quizTypeList .type');
-        });
-        if (adminTypeSearchBtn) {
-          adminTypeSearchBtn.addEventListener('click', function () {
-            applyTypeFilter(typeSearch, '#quizTypeList .type');
-          });
-        }
-      }
-
       function addRow(){
         const wrap = document.getElementById('shops');
         const div = document.createElement('div');
         div.className = 'shop-row';
 
+        const rowIndex = document.querySelectorAll('#shops .shop-row').length;
         div.innerHTML = `
           <input type="text" name="shop_name" placeholder="Business name" value="" />
-          <input type="text" name="shop_url" placeholder="Business URL" value="" />
           <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="" />
           <div class="shop-type-box">
             ${AVAILABLE_TYPES.map((type) => `
@@ -386,17 +416,19 @@
               </label>
             `).join('')}
           </div>
-          <button type="button" class="remove" onclick="removeRow(this)">Remove</button>
+          <div class="directory-actions">
+            <button class="directory-update" type="submit" name="directory_action" value="update:${rowIndex}">Update</button>
+            <button class="directory-delete" type="submit" name="directory_action" value="delete:${rowIndex}">Delete</button>
+          </div>
         `;
 
         wrap.appendChild(div);
         updateBusinessCount();
       }
 
-      function removeRow(btn){
-        const row = btn.closest('.shop-row');
-        if(row) row.remove();
-        updateBusinessCount();
+      function toggleProfiles(){
+        const profiles = document.getElementById('existingProfiles');
+        if (profiles) profiles.classList.toggle('open');
       }
 
       function updateBusinessCount(){

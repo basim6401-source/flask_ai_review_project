@@ -55,27 +55,6 @@ h1{
     font-size:16px;
 }
 
-.admin-link{
-    position:absolute;
-    top:20px;
-    right:28px;
-    display:inline-block;
-    width:max-content;
-    padding:8px 12px;
-    border:1px solid rgba(255,255,255,0.2);
-    border-radius:9px;
-    background:rgba(15,23,42,0.28);
-    color:rgba(255,255,255,0.62);
-    font-size:13px;
-    text-decoration:none;
-}
-
-.admin-link:hover{
-    color:white;
-    text-decoration:underline;
-    background:rgba(255,255,255,0.1);
-}
-
 .btn{
     display:block;
     margin:auto;
@@ -201,23 +180,9 @@ textarea{
         powered by Huzeetap
     </p>
 
-        <script>
-        const DEFAULT_TYPE = {{ (available_types[0] if available_types else '')|tojson }};
-    </script>
-
     <button class="btn" onclick="generateReview()">
         Generate Reviews
     </button>
-
-    {% if shops|length > 1 %}
-    <select id="businessSelect" class="business-select" aria-label="Select business">
-        {% for shop in shops %}
-        <option value="{{ shop.name }}">{{ shop.name }}</option>
-        {% endfor %}
-    </select>
-    {% endif %}
-
-    <a class="admin-link" href="{{ admin_url }}">Admin sign in</a>
 
     <div id="reviews"></div>
 
@@ -234,9 +199,6 @@ async function generateReview() {
     try {
 
         const params = new URLSearchParams();
-        if (DEFAULT_TYPE) params.set('type', DEFAULT_TYPE);
-        const businessSelect = document.getElementById('businessSelect');
-        if (businessSelect) params.set('shop', businessSelect.value);
         const q = params.toString() ? `?${params.toString()}` : '';
         const response = await fetch(`/generate${q}`);
         const data = await response.json();

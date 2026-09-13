@@ -67,6 +67,21 @@ AVAILABLE_TYPES = [
     "Hospital",
     "Real Estate",
     "Asian",
+    "Ceramic Tiles",
+    "Kitchen Accessories",
+    "Washroom Accessories",
+    "Plumber Shop",
+    "Tools Shop",
+    "Sanitaryware Shop",
+    "Bathroom Fittings",
+    "Hardware Shop",
+    "Electrical Shop",
+    "Paint Shop",
+    "Flooring Shop",
+    "Modular Kitchen",
+    "Building Materials",
+    "Plywood Shop",
+    "Lighting Shop",
     "Other"
 ]
 
@@ -111,6 +126,28 @@ CATEGORY_FOODS = {
     "Hospital": ["doctor consultation", "nursing care", "lab test", "emergency support", "check-up", "diagnostic scan"],
     "Real Estate": ["property visit", "site tour", "broker assistance", "villa viewing", "loan guidance", "apartment tour"],
     "Asian": ["sushi", "ramen", "pad thai", "dumplings", "fried rice"],
+    "Ceramic Tiles": ["floor tiles", "wall tiles", "bathroom tiles", "kitchen tiles", "tile collection", "tile design"],
+    "Kitchen Accessories": ["kitchen fittings", "storage accessories", "sink accessories", "cabinet hardware", "kitchen organizer", "cooking accessory"],
+    "Washroom Accessories": ["shower accessories", "bathroom mirror", "towel holder", "soap dispenser", "washroom storage", "bathroom accessory"],
+    "Plumber Shop": ["plumbing fittings", "water pipe", "tap fitting", "valve", "pipe accessories", "plumbing tools"],
+    "Tools Shop": ["power tools", "hand tools", "drill machine", "measuring tools", "tool kit", "workshop equipment"],
+    "Sanitaryware Shop": ["wash basin", "toilet suite", "bathtub", "sanitary fittings", "ceramic basin", "bathroom suite"],
+    "Bathroom Fittings": ["faucet", "shower set", "tap fitting", "flush system", "bathroom hardware", "water fitting"],
+    "Hardware Shop": ["door hardware", "locks", "hinges", "screws", "fasteners", "building hardware"],
+    "Electrical Shop": ["switches", "sockets", "wires", "circuit breakers", "electrical fittings", "lighting accessories"],
+    "Paint Shop": ["interior paint", "exterior paint", "wall colors", "paint brushes", "primer", "wood finish"],
+    "Flooring Shop": ["wood flooring", "vinyl flooring", "laminate flooring", "floor design", "floor installation", "floor samples"],
+    "Modular Kitchen": ["modular cabinets", "kitchen design", "countertop", "storage unit", "kitchen installation", "drawer system"],
+    "Building Materials": ["cement", "bricks", "sand", "construction materials", "steel rods", "building supplies"],
+    "Plywood Shop": ["plywood sheets", "laminate sheets", "MDF boards", "block board", "veneer", "wood panels"],
+    "Lighting Shop": ["ceiling lights", "LED bulbs", "chandeliers", "wall lights", "outdoor lights", "decorative lighting"],
+}
+
+SERVICE_TYPES = {
+    "Dental Clinic", "Salon", "Spa", "Gym", "Auto Garage", "Hospital", "Real Estate",
+    "Ceramic Tiles", "Kitchen Accessories", "Washroom Accessories", "Plumber Shop", "Tools Shop",
+    "Sanitaryware Shop", "Bathroom Fittings", "Hardware Shop", "Electrical Shop", "Paint Shop",
+    "Flooring Shop", "Modular Kitchen", "Building Materials", "Plywood Shop", "Lighting Shop",
 }
 
 food_items = [
@@ -210,7 +247,7 @@ used_reviews = []
 
 
 def get_quality_words_for_type(qtype):
-    if qtype in {"Dental Clinic", "Salon", "Spa", "Gym", "Auto Garage", "Hospital", "Real Estate"}:
+    if qtype in SERVICE_TYPES:
         return [
             "professional",
             "smooth",
@@ -233,7 +270,7 @@ def generate_review_for_type(qtype=None):
     quality = random.choice(get_quality_words_for_type(qtype))
     service = random.choice(service_type_phrases.get(qtype, service_phrases))
 
-    if qtype in {"Dental Clinic", "Salon", "Spa", "Gym", "Auto Garage", "Hospital", "Real Estate"}:
+    if qtype in SERVICE_TYPES:
         starters = [
             f"The {qtype} experience was",
             f"I was impressed with the {qtype} service and the",
@@ -599,8 +636,7 @@ def home():
         "index.html",
         google_url=google_review_url,
         shops=shops,
-        available_types=quiz_types,
-        admin_url=url_for('login')
+        available_types=quiz_types
     )
 
 @app.route("/generate")
@@ -647,6 +683,13 @@ def generate():
 def admin():
     if request.method == 'POST':
         existing_shops = load_config().get('shops', [])
+        directory_action = request.form.get('directory_action', '')
+        delete_index = None
+        if directory_action.startswith('delete:'):
+            try:
+                delete_index = int(directory_action.split(':', 1)[1])
+            except ValueError:
+                delete_index = None
         names = request.form.getlist('shop_name')
         urls = request.form.getlist('shop_url')
         review_urls = request.form.getlist('shop_google_review_url')
@@ -658,9 +701,13 @@ def admin():
                 shop_types[index].extend(values)
 
         shops = []
-        for i, (n, u) in enumerate(zip(names, urls)):
+        for i, n in enumerate(names):
+            if i == delete_index:
+                continue
+            u = urls[i].strip() if i < len(urls) else ''
             n = n.strip()
-            u = u.strip()
+            if not u and i < len(existing_shops) and existing_shops[i].get('name') == n:
+                u = existing_shops[i].get('url', '')
             selected_types = []
             for item in shop_types.get(str(i), []):
                 item = item.strip()
@@ -677,8 +724,14 @@ def admin():
                 primary = selected_types[0] if selected_types else ''
                 shops.append({'name': n, 'url': u, 'google_review_url': review_url, 'type': primary, 'types': selected_types})
 
+        directory_types = [
+            item
+            for shop in shops
+            for item in normalize_shop_types(shop)
+        ]
+        submitted_quiz_types = request.form.getlist('quiz_types')
         custom_quiz_types = parse_custom_quiz_types(request.form.get('custom_quiz_types'))
-        quiz_types = request.form.getlist('quiz_types') + custom_quiz_types
+        quiz_types = submitted_quiz_types + custom_quiz_types or directory_types
         google_review_url = request.form.get('google_review_url', '').strip() or GOOGLE_REVIEW_URL
         cfg = {
             'shops': shops,
@@ -686,6 +739,9 @@ def admin():
             'google_review_url': google_review_url,
         }
         save_config(cfg)
+        if directory_action.startswith(('update:', 'delete:')):
+            message = 'Business updated.' if directory_action.startswith('update:') else 'Business deleted.'
+            return redirect(url_for('admin', admin_message=message))
         return redirect(url_for('home'))
 
     cfg = load_config()

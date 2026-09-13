@@ -378,7 +378,7 @@
               <input type="text" name="shop_name" placeholder="Business name" value="{{ s.name }}" />
               <div class="review-url-list">
                 {% set review_urls = s.google_review_urls|default([s.google_review_url|default('')]) %}
-                <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="{{ review_urls[0]|default('') }}" />
+                <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="{{ review_urls[0]|default('') }}" required />
               </div>
               <div class="shop-type-box">
                 {% for t in available_types %}
@@ -412,7 +412,7 @@
         div.innerHTML = `
           <input type="text" name="shop_name" placeholder="Business name" value="" />
           <div class="review-url-list">
-            <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="" />
+            <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="" required />
           </div>
           <div class="shop-type-box">
             ${AVAILABLE_TYPES.map((type) => `

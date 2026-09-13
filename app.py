@@ -23,7 +23,6 @@ ADMIN_USERNAME = "huzaifa"
 ADMIN_PASSWORD = "admin123"
 ADMIN_FIRST_NAME = "Huzaifa"
 ADMIN_PATH = os.environ.get("ADMIN_PATH", "/huzaifa-admin").rstrip("/") or "/huzaifa-admin"
-GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJEb5DJgBDvDsRixDy-RGkGCw"
 
 
 # Default available quiz types and mapping to food pools
@@ -457,7 +456,7 @@ def load_config_from_file():
 def load_config():
     init_db()
     file_cfg = load_config_from_file()
-    google_review_url = file_cfg.get('google_review_url', GOOGLE_REVIEW_URL)
+    google_review_url = file_cfg.get('google_review_url', '')
     conn = get_db_connection()
     shops = []
     for row in conn.execute(
@@ -529,7 +528,7 @@ def save_config(cfg):
     normalized_cfg = {
         'shops': normalized_shops,
         'quiz_types': normalize_quiz_types(cfg.get('quiz_types')),
-        'google_review_url': (cfg.get('google_review_url') or GOOGLE_REVIEW_URL).strip()
+        'google_review_url': (cfg.get('google_review_url') or '').strip()
     }
     cfg_path = os.path.join(os.path.dirname(__file__), 'config.json')
     with open(cfg_path, 'w', encoding='utf-8') as f:
@@ -656,7 +655,7 @@ def home():
         shop.setdefault('google_review_urls', normalize_review_urls(shop))
 
     quiz_types = normalize_quiz_types(cfg.get('quiz_types'))
-    google_review_url = cfg.get('google_review_url', GOOGLE_REVIEW_URL)
+    google_review_url = cfg.get('google_review_url', '')
     return render_template(
         "index.html",
         google_url=google_review_url,
@@ -672,7 +671,7 @@ def generate():
     # load config to read available quiz types
     cfg = load_config()
     available = cfg.get('quiz_types', AVAILABLE_TYPES)
-    google_review_url = cfg.get('google_review_url', GOOGLE_REVIEW_URL)
+    google_review_url = cfg.get('google_review_url', '')
     business_types = [
         item
         for shop in cfg.get('shops', [])
@@ -685,6 +684,10 @@ def generate():
             if shop.get('name') == shop_name and review_urls:
                 google_review_url = random.choice(review_urls)
                 break
+    elif cfg.get('shops'):
+        first_review_urls = normalize_review_urls(cfg['shops'][0])
+        if first_review_urls:
+            google_review_url = first_review_urls[0]
 
     generation_types = [qtype] if qtype else list(dict.fromkeys(business_types or available))
 
@@ -765,7 +768,7 @@ def admin():
         submitted_quiz_types = request.form.getlist('quiz_types')
         custom_quiz_types = parse_custom_quiz_types(request.form.get('custom_quiz_types'))
         quiz_types = submitted_quiz_types + custom_quiz_types or directory_types
-        google_review_url = request.form.get('google_review_url', '').strip() or GOOGLE_REVIEW_URL
+        google_review_url = request.form.get('google_review_url', '').strip()
         cfg = {
             'shops': shops,
             'quiz_types': normalize_quiz_types(quiz_types),
@@ -779,7 +782,7 @@ def admin():
 
     cfg = load_config()
     cfg['quiz_types'] = normalize_quiz_types(cfg.get('quiz_types'))
-    cfg.setdefault('google_review_url', GOOGLE_REVIEW_URL)
+    cfg.setdefault('google_review_url', '')
     if 'shops' not in cfg:
         shop_name = cfg.get('shop_name', '')
         shop_url = cfg.get('shop_url', '')

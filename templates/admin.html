@@ -383,7 +383,7 @@
               <div class="shop-type-box">
                 {% for t in available_types %}
                   <label class="type-choice">
-                    <input type="checkbox" name="shop_type_{{ loop.index0 }}" value="{{ t }}" {% if t in shop_types %}checked{% endif %} />
+                    <input type="checkbox" name="shop_type_{{ row_index }}" value="{{ t }}" {% if t in shop_types %}checked{% endif %} />
                     <span>{{ t }}</span>
                   </label>
                 {% endfor %}

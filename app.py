@@ -672,22 +672,29 @@ def generate():
     cfg = load_config()
     available = cfg.get('quiz_types', AVAILABLE_TYPES)
     google_review_url = cfg.get('google_review_url', '')
-    business_types = [
-        item
-        for shop in cfg.get('shops', [])
-        for item in normalize_shop_types(shop)
-    ]
+    selected_shop = None
     shop_name = request.args.get('shop', '').strip()
-    if shop_name:
+    for shop in cfg.get('shops', []):
+        if shop_name and shop.get('name') == shop_name:
+            selected_shop = shop
+            break
+    if selected_shop is None and cfg.get('shops'):
+        selected_shop = cfg['shops'][0]
+
+    if selected_shop:
+        business_types = normalize_shop_types(selected_shop)
+        review_urls = normalize_review_urls(selected_shop)
+        if review_urls:
+            google_review_url = review_urls[0]
+    else:
+        business_types = []
+
+    if shop_name and selected_shop:
         for shop in cfg.get('shops', []):
             review_urls = normalize_review_urls(shop)
             if shop.get('name') == shop_name and review_urls:
-                google_review_url = random.choice(review_urls)
+                google_review_url = review_urls[0]
                 break
-    elif cfg.get('shops'):
-        first_review_urls = normalize_review_urls(cfg['shops'][0])
-        if first_review_urls:
-            google_review_url = first_review_urls[0]
 
     generation_types = [qtype] if qtype else list(dict.fromkeys(business_types or available))
 

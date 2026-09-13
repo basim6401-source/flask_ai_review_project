@@ -243,6 +243,25 @@ class AdminAuthTestCase(unittest.TestCase):
         review_text = ' '.join(data['reviews']).lower()
         self.assertTrue(any(item in review_text for item in ['burger', 'fries', 'cheesecake', 'ice cream', 'brownie']))
 
+    def test_generate_uses_only_selected_business_profile_types(self):
+        with self.client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+        self.client.post(ADMIN_PATH, data={
+            'shop_name': ['Dental Clinic', 'Tile Store'],
+            'shop_type_0': ['Dental Clinic'],
+            'shop_type_1': ['Ceramic Tiles'],
+            'shop_google_review_url': [
+                'https://search.google.com/local/writereview?placeid=dental',
+                'https://search.google.com/local/writereview?placeid=tiles'
+            ]
+        })
+        response = self.client.get('/generate')
+        data = response.get_json()
+        self.assertEqual(data['type'], 'Dental Clinic')
+        review_text = ' '.join(data['reviews']).lower()
+        self.assertTrue(any(item in review_text for item in ['cleaning', 'teeth', 'treatment', 'check-up']))
+        self.assertNotIn('tile', review_text)
+
     def test_home_improvement_quiz_types_are_available(self):
         new_types = [
             'Ceramic Tiles', 'Kitchen Accessories', 'Washroom Accessories',

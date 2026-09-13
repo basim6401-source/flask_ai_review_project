@@ -4,21 +4,27 @@
       "name": "Business A",
       "url": "https://first.example",
       "google_review_url": "https://search.google.com/local/writereview?placeid=first-place",
-      "type": "Car Wash",
+      "google_review_urls": [
+        "https://search.google.com/local/writereview?placeid=first-place"
+      ],
+      "type": "Ceramic Tiles",
       "types": [
-        "Car Wash"
+        "Ceramic Tiles"
       ]
     },
     {
       "name": "Business B",
       "url": "https://second.example",
       "google_review_url": "https://search.google.com/local/writereview?placeid=second-place",
+      "google_review_urls": [
+        "https://search.google.com/local/writereview?placeid=second-place"
+      ],
       "type": "",
       "types": []
     }
   ],
   "quiz_types": [
-    "Car Wash"
+    "Ceramic Tiles"
   ],
   "google_review_url": "https://search.google.com/local/writereview?placeid=ChIJEb5DJgBDvDsRixDy-RGkGCw"
 }

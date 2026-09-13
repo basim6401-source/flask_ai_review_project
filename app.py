@@ -23,8 +23,8 @@ ADMIN_USERNAME = "huzaifa"
 ADMIN_PASSWORD = "admin123"
 ADMIN_FIRST_NAME = "Huzaifa"
 ADMIN_PATH = os.environ.get("ADMIN_PATH", "/huzaifa-admin").rstrip("/") or "/huzaifa-admin"
-
 GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJEb5DJgBDvDsRixDy-RGkGCw"
+
 
 # Default available quiz types and mapping to food pools
 AVAILABLE_TYPES = [
@@ -352,6 +352,21 @@ def normalize_shop_types(shop):
     return clean
 
 
+def normalize_review_urls(shop):
+    values = shop.get('google_review_urls')
+    if not isinstance(values, list):
+        values = [shop.get('google_review_url', '')]
+    clean = []
+    seen = set()
+    for value in values:
+        if isinstance(value, str):
+            value = value.strip()
+        if value and value not in seen:
+            clean.append(value)
+            seen.add(value)
+    return clean[:1]
+
+
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -460,10 +475,18 @@ def load_config():
         if not types and row['business_type']:
             types = [row['business_type']]
         primary_type = types[0] if types else (row['business_type'] or '')
+        raw_review_url = row['google_review_url'] or ''
+        try:
+            review_urls = json.loads(raw_review_url)
+            if not isinstance(review_urls, list):
+                review_urls = [raw_review_url]
+        except (TypeError, json.JSONDecodeError):
+            review_urls = [raw_review_url]
         shops.append({
             'name': row['name'],
             'url': row['url'],
-            'google_review_url': row['google_review_url'] or '',
+            'google_review_url': review_urls[0] if review_urls else '',
+            'google_review_urls': normalize_review_urls({'google_review_urls': review_urls}),
             'type': primary_type,
             'types': types,
         })
@@ -498,6 +521,7 @@ def save_config(cfg):
             'name': shop.get('name', ''),
             'url': shop.get('url', ''),
             'google_review_url': (shop.get('google_review_url') or '').strip(),
+            'google_review_urls': normalize_review_urls(shop),
             'type': primary_type,
             'types': types,
         })
@@ -519,7 +543,7 @@ def save_config(cfg):
         primary_type = types[0] if types else (shop.get('type') or '')
         conn.execute(
             'INSERT INTO businesses (name, url, google_review_url, business_type, types) VALUES (?, ?, ?, ?, ?)',
-            (shop.get('name', ''), shop.get('url', ''), shop.get('google_review_url', ''), primary_type, json.dumps(types, ensure_ascii=False))
+            (shop.get('name', ''), shop.get('url', ''), json.dumps(shop.get('google_review_urls', []), ensure_ascii=False), primary_type, json.dumps(types, ensure_ascii=False))
         )
     for t in normalized_cfg.get('quiz_types', []):
         conn.execute('INSERT INTO quiz_types (name) VALUES (?)', (t,))
@@ -629,6 +653,7 @@ def home():
     for shop in shops:
         shop.setdefault('type', '')
         shop.setdefault('google_review_url', '')
+        shop.setdefault('google_review_urls', normalize_review_urls(shop))
 
     quiz_types = normalize_quiz_types(cfg.get('quiz_types'))
     google_review_url = cfg.get('google_review_url', GOOGLE_REVIEW_URL)
@@ -648,33 +673,38 @@ def generate():
     cfg = load_config()
     available = cfg.get('quiz_types', AVAILABLE_TYPES)
     google_review_url = cfg.get('google_review_url', GOOGLE_REVIEW_URL)
+    business_types = [
+        item
+        for shop in cfg.get('shops', [])
+        for item in normalize_shop_types(shop)
+    ]
     shop_name = request.args.get('shop', '').strip()
     if shop_name:
         for shop in cfg.get('shops', []):
-            if shop.get('name') == shop_name and shop.get('google_review_url'):
-                google_review_url = shop['google_review_url']
+            review_urls = normalize_review_urls(shop)
+            if shop.get('name') == shop_name and review_urls:
+                google_review_url = random.choice(review_urls)
                 break
 
-    # if no type provided, default to first admin-selected type (if any)
-    if not qtype and available:
-        qtype = available[0]
+    generation_types = [qtype] if qtype else list(dict.fromkeys(business_types or available))
 
     # select food pool based on quiz type; fall back to default pool
-    if qtype and qtype in CATEGORY_FOODS:
-        pool = CATEGORY_FOODS[qtype]
+    if generation_types and generation_types[0] in CATEGORY_FOODS:
+        pool = CATEGORY_FOODS[generation_types[0]]
     else:
         pool = food_items
 
     reviews = []
     while len(reviews) < 2:
-        review = generate_review_for_type(qtype)
+        review_type = generation_types[(len(reviews)) % len(generation_types)] if generation_types else None
+        review = generate_review_for_type(review_type)
         if review not in reviews:
             reviews.append(review)
 
     return jsonify({
         "reviews": reviews,
         "google_url": google_review_url,
-        "type": qtype or ""
+        "type": ", ".join(generation_types)
     })
 
 
@@ -692,7 +722,7 @@ def admin():
                 delete_index = None
         names = request.form.getlist('shop_name')
         urls = request.form.getlist('shop_url')
-        review_urls = request.form.getlist('shop_google_review_url')
+        legacy_review_urls = request.form.getlist('shop_google_review_url')
         shop_types = {}
         for key, values in request.form.lists():
             if key.startswith('shop_type_'):
@@ -719,10 +749,13 @@ def admin():
                     selected_types = [legacy_types[i].strip()]
             if not selected_types and i < len(existing_shops):
                 selected_types = normalize_shop_types(existing_shops[i])
-            review_url = review_urls[i].strip() if i < len(review_urls) else ''
-            if n or u or selected_types or review_url:
+            business_review_urls = []
+            if i < len(legacy_review_urls) and legacy_review_urls[i].strip():
+                business_review_urls.append(legacy_review_urls[i].strip())
+            review_url = business_review_urls[0] if business_review_urls else ''
+            if n or u or selected_types or business_review_urls:
                 primary = selected_types[0] if selected_types else ''
-                shops.append({'name': n, 'url': u, 'google_review_url': review_url, 'type': primary, 'types': selected_types})
+                shops.append({'name': n, 'url': u, 'google_review_url': review_url, 'google_review_urls': business_review_urls, 'type': primary, 'types': selected_types})
 
         directory_types = [
             item
@@ -756,6 +789,7 @@ def admin():
     for shop in cfg.get('shops', []):
         shop.setdefault('type', '')
         shop.setdefault('google_review_url', '')
+        shop.setdefault('google_review_urls', normalize_review_urls(shop))
         shop.setdefault('types', normalize_shop_types(shop))
     available_types = normalize_quiz_types(AVAILABLE_TYPES + cfg.get('quiz_types', []))
     return render_template(

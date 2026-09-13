@@ -372,10 +372,14 @@
             {% set shops = [{'name':'','url':'','type':'','types':[]}] %}
           {% endif %}
           {% for s in shops %}
+            {% set row_index = loop.index0 %}
             {% set shop_types = s.get('types', []) or ([s.type] if s.type else []) %}
             <div id="business-row-{{ loop.index0 }}" class="shop-row">
               <input type="text" name="shop_name" placeholder="Business name" value="{{ s.name }}" />
-              <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="{{ s.google_review_url|default('') }}" />
+              <div class="review-url-list">
+                {% set review_urls = s.google_review_urls|default([s.google_review_url|default('')]) %}
+                <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="{{ review_urls[0]|default('') }}" />
+              </div>
               <div class="shop-type-box">
                 {% for t in available_types %}
                   <label class="type-choice">
@@ -407,7 +411,9 @@
         const rowIndex = document.querySelectorAll('#shops .shop-row').length;
         div.innerHTML = `
           <input type="text" name="shop_name" placeholder="Business name" value="" />
-          <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="" />
+          <div class="review-url-list">
+            <input type="url" name="shop_google_review_url" placeholder="Google Review URL" value="" />
+          </div>
           <div class="shop-type-box">
             ${AVAILABLE_TYPES.map((type) => `
               <label class="type-choice">
@@ -430,6 +436,7 @@
         const profiles = document.getElementById('existingProfiles');
         if (profiles) profiles.classList.toggle('open');
       }
+
 
       function updateBusinessCount(){
         const count = document.querySelectorAll('#shops .shop-row').length;

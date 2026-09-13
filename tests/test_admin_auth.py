@@ -120,6 +120,7 @@ class AdminAuthTestCase(unittest.TestCase):
         self.assertEqual(first_response.get_json()['google_url'], first_url)
         self.assertEqual(second_response.get_json()['google_url'], second_url)
 
+
     def test_business_directory_update_and_delete_actions(self):
         with self.client.session_transaction() as sess:
             sess['admin_logged_in'] = True
@@ -214,6 +215,33 @@ class AdminAuthTestCase(unittest.TestCase):
         review_text = ' '.join(data['reviews']).lower()
         self.assertTrue(any(keyword in review_text for keyword in ['clinic', 'dental', 'teeth', 'treatment', 'check-up', 'cleaning']))
         self.assertNotIn('food', review_text)
+
+    def test_generate_without_type_uses_business_directory_types(self):
+        with self.client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+        self.client.post(ADMIN_PATH, data={
+            'shop_name': ['Tile Shop'],
+            'shop_type_0': ['Ceramic Tiles'],
+            'shop_google_review_url': ['https://search.google.com/local/writereview?placeid=tiles']
+        })
+        response = self.client.get('/generate')
+        data = response.get_json()
+        self.assertEqual(data['type'], 'Ceramic Tiles')
+        self.assertTrue(any(item in ' '.join(data['reviews']).lower() for item in ['tile', 'bathroom', 'kitchen']))
+
+    def test_generate_without_type_uses_all_assigned_business_types(self):
+        with self.client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+        self.client.post(ADMIN_PATH, data={
+            'shop_name': ['Multi Category Restaurant'],
+            'shop_type_0': ['Fast Food', 'Desserts'],
+            'shop_google_review_url': ['https://search.google.com/local/writereview?placeid=multi']
+        })
+        response = self.client.get('/generate')
+        data = response.get_json()
+        self.assertEqual(data['type'], 'Fast Food, Desserts')
+        review_text = ' '.join(data['reviews']).lower()
+        self.assertTrue(any(item in review_text for item in ['burger', 'fries', 'cheesecake', 'ice cream', 'brownie']))
 
     def test_home_improvement_quiz_types_are_available(self):
         new_types = [
